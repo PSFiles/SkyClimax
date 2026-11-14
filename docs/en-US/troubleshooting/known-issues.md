@@ -222,8 +222,36 @@ primitive the runtime fails to implement — they are simply not producing.
 So the lifted SPU code executes; what is missing is the PPU-side CRI server
 answering its own queue.
 
-**Remaining hypothesis.** The CRI initialisation sequence on the PPU side does not
-complete. With 21 threads created, 21 started and only 1 exited, and no thread
-blocked on anything, the next useful step is a debugger attach rather than more
-environment flags: break on `sys_event_queue_push` and confirm no CRI thread ever
-reaches it, then read the guest stack of `CriSr_SignalingServer` directly.
+**The re-lift with names identified the subsystem.** Building
+`work/meta/names.json` (281 functions named from referenced strings) and
+re-lifting with `--names` turned the addresses into CRI symbols:
+
+| Address | Name | Role |
+|---|---|---|
+| `0x002C68A0` | `mxr000` | CRI mixer, the function that blocks |
+| `0x002C410C` | `mxr004` | polling loop around the wait (`lr=0x002C47B8` is inside it) |
+| `0x002512E8` | `CriSr_ProcessServer` | sound renderer server thread |
+| `0x002356B8` | `CriAuVoice_Initialize` | voice initialisation |
+| `0x00229654` | `CriAuFileLoader_Load` | stream loader |
+
+So the blocking call is the **CRI mixer waiting for the sound renderer**, not the
+renderer waiting for the mixer.
+
+**The renderer is idle, not spinning.** `[spu] drain-resume return_pc=0x08274`
+appears 8 times in 60 s — the lifted SPU renderer wakes, returns, and sleeps
+again. `[spu_workload] task 0 ... sleeping in WAIT_SIGNAL` agrees.
+
+**Conclusion.** The CRI audio initialisation deadlocks: the PPU mixer blocks on a
+queue that the SPU renderer should answer, and the renderer sits idle waiting for
+work that never arrives. Neither side moves.
+
+**Why the re-lift did not finish the job.** `--names` emits the symbol as a
+comment above the function, but the body remains a register-by-register
+translation. `mxr000` is hundreds of lines of `ctx->gpr[n]` assignments, so the
+exact missing handshake call cannot be read out of it. Naming answered *which*
+subsystem, not *which* call.
+
+**What would actually finish it.** A debugger attach: break on
+`sys_event_queue_push` to confirm no CRI thread ever reaches it, then step the
+renderer's start sequence. That needs an interactive session, not more scripted
+probing — the environment flags are exhausted.

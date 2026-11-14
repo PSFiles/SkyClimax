@@ -232,9 +232,36 @@ elas simplesmente não produzem.
 Então o código de SPU elevado executa; o que falta é o servidor CRI do lado PPU
 responder à própria fila.
 
-**Hipótese restante.** A sequência de inicialização da CRI no lado PPU não se
-completa. Com 21 threads criadas, 21 iniciadas e apenas 1 encerrada, e nenhuma
-thread bloqueada em nada, o próximo passo útil é anexar um depurador em vez de
-mais flags de ambiente: quebrar em `sys_event_queue_push` e confirmar que nenhuma
-thread CRI chega lá, depois ler a pilha do convidado da `CriSr_SignalingServer`
-diretamente.
+**O re-lift com nomes identificou o subsistema.** Gerar `work/meta/names.json`
+(281 funções nomeadas a partir de strings referenciadas) e re-elevar com `--names`
+transformou os endereços em símbolos da CRI:
+
+| Endereço | Nome | Papel |
+|---|---|---|
+| `0x002C68A0` | `mxr000` | mixer da CRI, a função que bloqueia |
+| `0x002C410C` | `mxr004` | laço de polling em torno da espera (`lr=0x002C47B8` está dentro dele) |
+| `0x002512E8` | `CriSr_ProcessServer` | thread servidora do sound renderer |
+| `0x002356B8` | `CriAuVoice_Initialize` | inicialização de vozes |
+| `0x00229654` | `CriAuFileLoader_Load` | carregador de streams |
+
+Então a chamada que bloqueia é o **mixer da CRI esperando o sound renderer**, não
+o renderer esperando o mixer.
+
+**O renderer está ocioso, não girando.** `[spu] drain-resume return_pc=0x08274`
+aparece 8 vezes em 60 s — o renderer elevado na SPU acorda, retorna e volta a
+dormir. `[spu_workload] task 0 ... sleeping in WAIT_SIGNAL` concorda.
+
+**Conclusão.** A inicialização de áudio da CRI entra em impasse: o mixer do lado
+PPU bloqueia numa fila que o renderer da SPU deveria responder, e o renderer fica
+ocioso esperando trabalho que nunca chega. Nenhum dos dois lados anda.
+
+**Por que o re-lift não terminou o serviço.** `--names` emite o símbolo como
+comentário acima da função, mas o corpo continua sendo tradução registrador a
+registrador. `mxr000` são centenas de linhas de atribuições `ctx->gpr[n]`, então a
+chamada de handshake que falta não se lê dali. Nomear respondeu *qual* subsistema,
+não *qual* chamada.
+
+**O que realmente terminaria.** Anexar um depurador: quebrar em
+`sys_event_queue_push` para confirmar que nenhuma thread CRI chega lá e então
+acompanhar a sequência de start do renderer. Isso exige sessão interativa, não mais
+sondagem por script — as flags de ambiente estão esgotadas.
