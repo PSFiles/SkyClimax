@@ -47,3 +47,6 @@ ps3recomp-*.zip
 
 # --- local assistant workspace data (not project source) -----------------
 /.workbuddy-ai/
+
+# --- CMake build tree (scripts/build.py uses /build/) ---------------------
+/build-cmake/
