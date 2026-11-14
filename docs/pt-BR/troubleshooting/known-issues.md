@@ -126,7 +126,7 @@ arquivos valida `item_count` de forma cruzada.
 
 ## KI-009 — a release binária omite as fontes do runtime
 
-**Severidade:** bloqueante (M4)
+**Severidade:** resolvido
 
 **Observado.** `lib/ps3recomp_runtime.lib` exporta implementações HLE
 (`cellAudioInit`, auxiliares de `cellGcmSys`, …), mas nenhum dos pontos de
@@ -139,6 +139,15 @@ nada, e o `main.cpp` do template do upstream declara que `ppu_load_elf`,
 **Causa.** A v0.19.0 é publicada como release binária; as fontes do runtime e a
 árvore `templates/project/` ficam no repositório do upstream, não no arquivo.
 
-**Contorno.** Clonar o repositório do upstream no commit fixado e apontar
-`PS3RECOMP_DIR` para ele, ou obter um tarball de fontes do mesmo commit. Até lá,
-o código elevado pode ser gerado, mas não linkado.
+**Correção aplicada.** O repositório do upstream foi clonado em
+`.vendor/ps3recomp-src` e posicionado em
+`ae92407bb1d899e3d32143e360fe6e6d4d8fa1b5` — exatamente o commit registrado no
+`VERSION.txt` da release. Ele fornece `runtime/ppu/ppu_loader.cpp`,
+`ppu_hle.cpp`, `ppu_fs.cpp`, `ppu_sysprx.cpp`, `libs/*.c` e
+`templates/project/`, que o `CMakeLists.txt` do template consome por
+`PS3RECOMP_DIR`.
+
+**Verificado.** `git log -1` reporta
+`ae92407bb1d899e3d32143e360fe6e6d4d8fa1b5` e `runtime/ppu/` contém as quatro
+fontes de inicialização. O link continua não testado porque falta o compilador
+(KI-003).

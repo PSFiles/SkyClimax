@@ -122,7 +122,7 @@ delegated to the ps3recomp extractor, whose 46-file result cross-validates
 
 ## KI-009 — the binary release omits the runtime sources
 
-**Severity:** blocking (M4)
+**Severity:** resolved
 
 **Observed.** `lib/ps3recomp_runtime.lib` exports HLE implementations
 (`cellAudioInit`, `cellGcmSys` helpers, …) but none of the boot entry points.
@@ -134,6 +134,13 @@ and `ppu_run` are "compiled into this project from `PS3RECOMP_DIR`".
 **Cause.** v0.19.0 is published as a binary release; the runtime sources and the
 `templates/project/` tree live in the upstream repository, not in the archive.
 
-**Workaround.** Clone the upstream repository at the pinned commit and point
-`PS3RECOMP_DIR` at it, or obtain a source tarball for the same commit. Until
-then the lifted code can be generated but not linked.
+**Fix applied.** The upstream repository was cloned into
+`.vendor/ps3recomp-src` and checked out at `ae92407bb1d899e3d32143e360fe6e6d4d8fa1b5`
+— the exact commit recorded in the release's `VERSION.txt`. It provides
+`runtime/ppu/ppu_loader.cpp`, `ppu_hle.cpp`, `ppu_fs.cpp`, `ppu_sysprx.cpp`,
+`libs/*.c` and `templates/project/`, which the template's `CMakeLists.txt`
+consumes through `PS3RECOMP_DIR`.
+
+**Verified.** `git log -1` reports `ae92407bb1d899e3d32143e360fe6e6d4d8fa1b5`
+and `runtime/ppu/` contains the four boot sources. Linking is still untested
+because the compiler is missing (KI-003).

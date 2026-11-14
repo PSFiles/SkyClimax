@@ -19,8 +19,9 @@ disponível.
 
 A release binária traz cabeçalhos e `lib/ps3recomp_runtime.lib`, mas **não** as
 fontes do runtime. O template de projeto do upstream as linka a partir de um
-checkout indicado por `PS3RECOMP_DIR`, então a build também precisa desse
-checkout. Isso está registrado como KI-009.
+checkout indicado por `PS3RECOMP_DIR`. Esse checkout já está presente em
+`.vendor/ps3recomp-src`, fixado em `ae92407b` — o mesmo commit da release. Veja
+KI-009.
 
 ## Etapa 1 — extrair o pacote
 

@@ -18,8 +18,9 @@ planned.
 
 The binary release ships headers and `lib/ps3recomp_runtime.lib`, but **not** the
 runtime sources. The upstream project template links them from a checkout named
-by `PS3RECOMP_DIR`, so a build also needs that checkout. This is recorded as
-KI-009.
+by `PS3RECOMP_DIR`. That checkout is already present at
+`.vendor/ps3recomp-src`, pinned to `ae92407b` — the same commit as the release.
+See KI-009.
 
 ## Stage 1 — extract the package
 
