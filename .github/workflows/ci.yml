@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows x64 — tests and documentation parity
+    runs-on: windows-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Run unit tests
+        run: python -m pytest -q
+
+      - name: Verify documentation parity (en-US / pt-BR)
+        run: python scripts/check_docs_parity.py
+
+      - name: Verify CLI is importable and self-describing
+        run: |
+          python -m skyclimax --version
+          python -m skyclimax --help
+
+      - name: Assert no proprietary game data is tracked
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden=$(git ls-files | grep -Ei '\.(pkg|rap|self|sprx|prx|edat|sdat|psarc|farc|adx|afs|trp)$|^EBOOT\.(BIN|elf)$|^keys$' || true)
+          if [ -n "$forbidden" ]; then
+            echo "Proprietary or restricted files are tracked:"; echo "$forbidden"; exit 1
+          fi
+          echo "No restricted files tracked."
