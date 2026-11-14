@@ -1,0 +1,46 @@
+# --- proprietary game data (never commit) ---------------------------------
+*.pkg
+*.rap
+*.self
+*.sprx
+*.prx
+*.edat
+*.sdat
+EBOOT.BIN
+EBOOT.elf
+keys
+*.trp
+*.pam
+*.psarc
+*.farc
+*.adx
+*.afs
+UP0177-*
+
+# --- extracted / generated working data -----------------------------------
+/work/
+/generated/
+/reports/
+
+# --- toolchain installed locally ------------------------------------------
+/.tools/
+/.vendor/
+/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+/build/
+/out/
+CMakeUserPresets.json
+
+# --- editors and OS --------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# --- third-party binary release (fetched by scripts/install-tools.ps1) ----
+ps3recomp-*.zip
