@@ -119,3 +119,21 @@ past `data_offset = 384`.
 **Status.** Unresolved. The header fields are reported raw; entry enumeration is
 delegated to the ps3recomp extractor, whose 46-file result cross-validates
 `item_count`.
+
+## KI-009 — the binary release omits the runtime sources
+
+**Severity:** blocking (M4)
+
+**Observed.** `lib/ps3recomp_runtime.lib` exports HLE implementations
+(`cellAudioInit`, `cellGcmSys` helpers, …) but none of the boot entry points.
+Searching the library for `load_elf` and `run` returns nothing, and the upstream
+template's `main.cpp` states that `ppu_load_elf`, `ppu_recomp_register`,
+`ppu_hle_init`, `ppu_sysprx_register`, `ppu_fs_register`, `lv2_init_syscalls`
+and `ppu_run` are "compiled into this project from `PS3RECOMP_DIR`".
+
+**Cause.** v0.19.0 is published as a binary release; the runtime sources and the
+`templates/project/` tree live in the upstream repository, not in the archive.
+
+**Workaround.** Clone the upstream repository at the pinned commit and point
+`PS3RECOMP_DIR` at it, or obtain a source tarball for the same commit. Until
+then the lifted code can be generated but not linked.

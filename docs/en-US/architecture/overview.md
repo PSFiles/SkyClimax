@@ -90,11 +90,12 @@ Three interfaces carry almost all of the risk:
 |---|---|
 | M0 toolchain installed and validated | validated |
 | M1 package opened, inventory reproducible | validated |
-| M2 executable container analysed | validated (metadata only) |
+| M2 executable container analysed | validated |
 | M3 lift pipeline proven on a synthetic ELF | validated |
-| M4 native build of lifted code | planned — blocked, no compiler |
-| M5 decrypted EBOOT lifted | planned — blocked, no key |
+| M4 native build of lifted code | planned — blocked, no compiler, no runtime sources |
+| M5 decrypted EBOOT lifted | validated — 15,237 functions |
 | M6 runtime boot and first frame | planned |
 | M7 playable | planned |
 
-The project is **experimental**. The last milestone actually reached is M3.
+The project is **experimental**. The last milestone actually reached is M5: the
+image is lifted, but nothing has been compiled or run.

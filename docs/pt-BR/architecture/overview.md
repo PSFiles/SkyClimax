@@ -93,11 +93,12 @@ Três interfaces concentram quase todo o risco:
 |---|---|
 | M0 toolchain instalada e validada | validado |
 | M1 pacote aberto, inventário reproduzível | validado |
-| M2 contêiner do executável analisado | validado (apenas metadados) |
+| M2 contêiner do executável analisado | validado |
 | M3 pipeline de elevação provado em um ELF sintético | validado |
-| M4 compilação nativa do código elevado | planejado — bloqueado, sem compilador |
-| M5 EBOOT descriptografado elevado | planejado — bloqueado, sem chave |
+| M4 compilação nativa do código elevado | planejado — bloqueado, sem compilador e sem fontes do runtime |
+| M5 EBOOT descriptografado elevado | validado — 15.237 funções |
 | M6 inicialização do runtime e primeiro quadro | planejado |
 | M7 jogável | planejado |
 
-O projeto é **experimental**. O último marco efetivamente alcançado é o M3.
+O projeto é **experimental**. O último marco efetivamente alcançado é o M5: a
+imagem está elevada, mas nada foi compilado nem executado.

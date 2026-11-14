@@ -1,9 +1,8 @@
 # Compilação
 
 Estado: **a compilação nativa nunca foi executada neste hospedeiro.** Não há
-compilador C/C++, CMake ou Ninja instalados. Tudo abaixo é o procedimento a
-executar quando esse pré-requisito existir; está marcado como planejado, não
-validado.
+compilador C/C++, CMake ou Ninja instalados. As etapas 1–4 estão validadas; as
+etapas 5–7 estão planejadas.
 
 ## Pré-requisitos
 
@@ -13,9 +12,15 @@ validado.
 | CMake | ≥ 3.20 | geração da build |
 | Ninja | ≥ 1.11 | builds incrementais rápidas |
 | Windows SDK | 10.0.22621 ou mais recente | cabeçalhos de D3D12 |
+| Fontes do runtime do ps3recomp | v0.19.0 | `ppu_load_elf`, `ppu_recomp_register`, `ppu_hle_init`, `ppu_run` |
 
 `clang-cl` é um substituto aceitável para `cl` se a STL do MSVC estiver
 disponível.
+
+A release binária traz cabeçalhos e `lib/ps3recomp_runtime.lib`, mas **não** as
+fontes do runtime. O template de projeto do upstream as linka a partir de um
+checkout indicado por `PS3RECOMP_DIR`, então a build também precisa desse
+checkout. Isso está registrado como KI-009.
 
 ## Etapa 1 — extrair o pacote
 
@@ -27,9 +32,10 @@ Validado: 46 arquivos, 551 MB, sem erros.
 
 ## Etapa 2 — obter um executável descriptografado
 
-Bloqueado. Veja [problemas conhecidos](../troubleshooting/known-issues.md). O
-artefato esperado é `work/game/EBOOT.elf`, uma imagem `ET_EXEC` PPC64
-big-endian.
+Validado. O dono forneceu `EBOOT.elf` (5.653.432 bytes, SHA-256
+`d3a13dd3…d6d33b777`). Ele só foi aceito depois de coincidir com a declaração do
+contêiner criptografado: `e_machine = 21`, `e_entry = 0x4CDF00`, 8 cabeçalhos de
+programa, 31 cabeçalhos de seção.
 
 ## Etapa 3 — carregar
 
@@ -37,10 +43,16 @@ big-endian.
 python .vendor/ps3recomp/tools/ppu_loader.py work/game/EBOOT.elf -o work/meta
 ```
 
+Validado:
+
+```text
+entry (OPD)      : 0x4cdf00 -> code 0x10230, toc 0x4ed088
+OPD descriptors  : 11827
+unique functions : 11338
+firmware imports : 207 across 14 libraries
+```
+
 Produz `EBOOT.functions.json`, `.image.json`, `.loader.json`, `.imports.json`.
-A lista de importações é o que diz quais módulos HLE precisam existir; em uma
-imagem descriptografada, espere contagens na casa das centenas de NIDs, como os
-projetos de referência relatam para títulos comparáveis.
 
 ## Etapa 4 — elevar
 
@@ -48,31 +60,35 @@ projetos de referência relatam para títulos comparáveis.
 python .vendor/ps3recomp/tools/ppu_lifter.py work/game/EBOOT.elf \
   -o generated/ \
   --functions work/meta/EBOOT.functions.json \
-  --imports  work/meta/EBOOT.imports.json
+  --hle-stubs work/meta/EBOOT.imports.json
 ```
 
-Validado em um ELF sintético: 1 função produziu `ppu_recomp_000.cpp`
-(1.117 linhas) mais `ppu_recomp.h`.
+Validado: 15.237 funções, 17 blocos, 9.571.078 linhas, 9m10s, 2 avisos — ambos
+`has no continuation at 0x004B7060`, que é o fim do segmento de texto e,
+portanto, um artefato de fronteira, não uma função mal dimensionada.
 
-## Etapa 5 — stubs
+Atenção ao nome da opção: é `--hle-stubs`, não `--imports`. A documentação do
+próprio liftedor em `docs/PPU_RECOMP.md` diz `--imports`, mas a CLI distribuída
+não a aceita. O arquivo de `--hle-stubs` é o mesmo `imports.json`.
 
-```bash
-python .vendor/ps3recomp/tools/generate_stubs.py work/meta/EBOOT.imports.json -o src/hle
-```
+## Etapa 5 — geração de stubs
 
-Ainda não executado contra importações reais, porque a tabela de importações
-está criptografada.
+Não é necessária para este título. O runtime já implementa todas as 14
+bibliotecas importadas; `generate_stubs.py` existe para bibliotecas ausentes.
+Mantenha-o como recurso para quando um NID se revelar não implementado em
+execução.
 
 ## Etapa 6 — configurar e compilar
 
 ```bash
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+      -DPS3RECOMP_DIR=/path/to/ps3recomp
 cmake --build build
 ```
 
-Não executado. A primeira falha esperada em uma imagem real é um símbolo HLE
-ausente, que é a forma normal de esta etapa anunciar qual módulo falta
-implementar em seguida.
+Não executado. Espere dois problemas primeiro: as fontes do runtime precisam
+estar presentes, e 9,57 M linhas de C++ gerado podem exigir `/bigobj` e mais
+divisão em blocos.
 
 ## Etapa 7 — executar
 

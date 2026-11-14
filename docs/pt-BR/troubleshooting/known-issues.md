@@ -123,3 +123,22 @@ estenderia além de `data_offset = 384`.
 **Estado.** Não resolvido. Os campos do cabeçalho são reportados brutos; a
 enumeração de entradas é delegada ao extrator do ps3recomp, cujo resultado de 46
 arquivos valida `item_count` de forma cruzada.
+
+## KI-009 — a release binária omite as fontes do runtime
+
+**Severidade:** bloqueante (M4)
+
+**Observado.** `lib/ps3recomp_runtime.lib` exporta implementações HLE
+(`cellAudioInit`, auxiliares de `cellGcmSys`, …), mas nenhum dos pontos de
+entrada de inicialização. Procurar `load_elf` e `run` na biblioteca não retorna
+nada, e o `main.cpp` do template do upstream declara que `ppu_load_elf`,
+`ppu_recomp_register`, `ppu_hle_init`, `ppu_sysprx_register`, `ppu_fs_register`,
+`lv2_init_syscalls` e `ppu_run` são "compiled into this project from
+`PS3RECOMP_DIR`".
+
+**Causa.** A v0.19.0 é publicada como release binária; as fontes do runtime e a
+árvore `templates/project/` ficam no repositório do upstream, não no arquivo.
+
+**Contorno.** Clonar o repositório do upstream no commit fixado e apontar
+`PS3RECOMP_DIR` para ele, ou obter um tarball de fontes do mesmo commit. Até lá,
+o código elevado pode ser gerado, mas não linkado.

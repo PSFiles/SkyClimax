@@ -6,10 +6,10 @@ Static recompilation of **After Burner Climax** (PlayStation 3, `NPUB30151`) to
 native Windows x64 — no emulator in the loop.
 
 > **Status: experimental.** The project has not produced a running executable.
-> The last milestone actually reached is **M3: the lift pipeline is proven on a
-> synthetic PS3 ELF**. The retail executable is encrypted and cannot be
-> decrypted without a key supplied by the game's owner. See
-> [known issues](docs/en-US/troubleshooting/known-issues.md).
+> The last milestone actually reached is **M5: the decrypted executable is
+> loaded and lifted — 15,237 functions, 9.57 M lines of C++**. Nothing has been
+> compiled: the host has no C/C++ toolchain, and the binary release omits the
+> runtime sources. See [known issues](docs/en-US/troubleshooting/known-issues.md).
 
 ## What this repository is
 
@@ -22,7 +22,8 @@ static recompiler, plus the analysis tooling this specific title needs:
 | `scripts/check_docs_parity.py` — bilingual documentation gate | implemented, passing |
 | `scripts/install-tools.*` — pinned, idempotent toolchain install | implemented |
 | `.github/workflows/ci.yml` — Windows CI | implemented |
-| Recompiled game code | **not produced** — blocked on decryption |
+| Lifted game code (`generated/`) | **produced** — 15,237 functions, 9.57 M lines |
+| Compiled executable | **not produced** — no compiler, no runtime sources |
 
 ## What is actually known about the game
 
@@ -32,8 +33,11 @@ Everything below was measured on the retail package, not assumed:
 - `PARAM.SFO`: title `After Burner Climax`, `TITLE_ID NPUB30151`, version `01.00`,
   target firmware `03.0000`.
 - `EBOOT.BIN`: 5,656,176-byte retail SELF; embedded ELF is `ET_EXEC`, `EM_PPC64`,
-  big-endian, entry `0x4CDF00` (an OPD descriptor in the data segment), 8 program
-  headers. **All payload segments are AES-encrypted** (entropy 7.9973 bits/byte).
+  big-endian, entry `0x4CDF00` (an OPD descriptor in the data segment).
+- Decrypted image (supplied by the owner, not in this repo): 11,338 functions
+  from 11,827 OPD descriptors, 207 firmware imports across 14 libraries,
+  1.11 M instructions decoded, engine symbols for AM2 motion, AET effects and
+  CRI 3.44.03 audio recovered from strings.
 - Assets: 407 MB PSARC (`rom.psarc`) whose table of contents is opaque, 101 Cg
   shader programs (`.vp`/`.fp`, gzip) in `shader_cg.farc`, 23 CRI ADX streams
   (31.6 minutes total) plus a 38.9 MB CRI AFS voice bank.
@@ -91,16 +95,15 @@ python -m skyclimax farc work/pkg/USRDIR/ps3/shader_cg.farc --extract work/shade
 | M1 | package opened, inventory reproducible | validated |
 | M2 | executable container analysed | validated (metadata only) |
 | M3 | lift pipeline proven on a synthetic ELF | validated |
-| M4 | native build of lifted code | planned — no compiler |
-| M5 | decrypted EBOOT lifted | planned — no key |
+| M4 | native build of lifted code | planned — no compiler, no runtime sources |
+| M5 | decrypted EBOOT lifted | validated — 15,237 functions |
 | M6 | runtime boot, first frame | planned |
 | M7 | playable | planned |
 
 ## Known limitations
 
-1. **The executable is encrypted.** No function names, addresses or import lists
-   are reported anywhere, because none can be verified. Anyone publishing such a
-   list for this title without decryption is guessing.
+1. **Nothing is compiled or run.** The lift is complete but unverified beyond
+   structure: no object file exists, so no claim about behaviour is possible.
 2. **`rom.psarc` is unindexed.** Its TOC does not match the documented layout;
    96 % of the package payload is currently unreadable.
 3. **Nothing has been compiled.** No C/C++ toolchain exists on the development

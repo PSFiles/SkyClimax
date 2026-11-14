@@ -4,20 +4,24 @@
 
 ## Posição atual
 
-**Marco alcançado: M3 — o pipeline de elevação está provado em um ELF de PS3
-sintético.** O projeto é experimental. Não existe código recompilado do jogo, e
-nada foi compilado.
+**Marco alcançado: M5 — o executável descriptografado está carregado e elevado.**
+O projeto é experimental. 15.237 funções foram traduzidas para C++, mas nada foi
+compilado e nada foi executado.
 
 | Marco | Estado | Bloqueio |
 |---|---|---|
 | M0 toolchain instalada e validada | validado | — |
 | M1 pacote aberto, inventário reproduzível | validado | — |
-| M2 contêiner do executável analisado | validado | carga criptografada |
+| M2 contêiner do executável analisado | validado | — |
 | M3 pipeline de elevação provado em um ELF sintético | validado | — |
-| M4 compilação nativa do código elevado | planejado | sem compilador C/C++ (KI-003) |
-| M5 EBOOT descriptografado elevado | planejado | sem chave (KI-001) |
-| M6 inicialização do runtime, primeiro quadro | planejado | depende de M4 e M5 |
+| M4 compilação nativa do código elevado | planejado | sem compilador (KI-003), sem fontes do runtime (KI-009) |
+| M5 EBOOT descriptografado elevado | validado | — |
+| M6 inicialização do runtime, primeiro quadro | planejado | depende de M4 |
 | M7 jogável | planejado | depende de M6 |
+
+M4 e M5 são independentes: elevar não precisa de compilador, e compilar não
+precisa de mais análise. M5 terminou primeiro porque o dono forneceu a imagem
+descriptografada.
 
 ## Registro de tarefas
 
@@ -31,47 +35,51 @@ nada foi compilado.
 | 2026-11-14 | Caracterizar o Sega FArc (ambas as variantes) | feito | 2 + 101 registros, cargas gzip |
 | 2026-11-14 | Caracterizar o áudio CRI ADX | feito | 23 arquivos, 44,1 kHz, 1.898,9 s |
 | 2026-11-14 | Sondar a tabela de conteúdo do PSARC | bloqueado | 0/32 entradas plausíveis → `opaque` |
-| 2026-11-14 | Importar um ELF PPC64 no Ghidra | feito | `PowerPC:BE:64:default`, importação bem-sucedida |
 | 2026-11-14 | Elevar um ELF de PS3 sintético para C++ | feito | 1 função → 1.117 linhas |
-| 2026-11-14 | Descriptografar o EBOOT de varejo | bloqueado | exige chave do título ou dump descriptografado |
+| 2026-11-14 | Verificar o ELF descriptografado fornecido pelo dono | feito | `e_machine=21`, `e_entry=0x4CDF00`, SHA-256 registrado |
+| 2026-11-14 | Carregar a imagem real | feito | 11.827 OPDs → 11.338 funções, TOC `0x4ed088` |
+| 2026-11-14 | Extrair e resolver as importações de firmware | feito | 207 importações, 14 bibliotecas, 163 NIDs nomeados |
+| 2026-11-14 | Auto-análise do Ghidra na imagem real | feito | 11.541 funções, 118.346 símbolos, 358 s |
+| 2026-11-14 | Elevar a imagem real | feito | 15.237 funções, 9m10s, 2 avisos |
+| 2026-11-14 | Identificar motor e middleware pelas strings | feito | AM2 motion, AET, CRI 3.44.03, ENEPACK |
 | 2026-11-14 | Compilar o C++ gerado | bloqueado | sem compilador no hospedeiro |
+| 2026-11-14 | Linkar contra o runtime | bloqueado | fontes do runtime ausentes da release binária |
 
 ## Próximos passos, ordenados por risco e dependência
 
-1. **Obter um `EBOOT.elf` descriptografado.** Todo o restante depende disso.
-   Maior risco, maior valor. Aceitação: `e_machine = 21`,
-   `e_entry = 0x4CDF00`, SHA-256 registrado.
-2. **Instalar MSVC Build Tools, CMake e Ninja.** Desbloqueia o M4
-   independentemente do passo 1 e pode ser feito em paralelo. Aceitação: `cl` e
-   `cmake --version` funcionam, e a elevação sintética compila.
-3. **Elevar a imagem real e contar funções.** Aceitação: carregador e liftedor
-   concordam na contagem de funções, e não restam avisos
-   `has no continuation`.
-4. **Agrupar as importações de firmware por biblioteca.** Isso determina o
-   escopo de HLE e, portanto, o cronograma real. Aceitação: uma tabela de
-   biblioteca → contagem de NIDs na matriz de compatibilidade.
-5. **Atacar a TOC do `rom.psarc`.** Necessário antes de qualquer conversão de
-   assets. Abordagem: procurar o leitor no EBOOT descriptografado em vez de
-   adivinhar o formato.
-6. **Traduzir os 101 programas Cg.** Só faz sentido quando o renderizador rodar.
+1. **Instalar MSVC Build Tools, CMake e Ninja.** Desbloqueia o M4. Aceitação:
+   `cl` e `cmake --version` funcionam.
+2. **Obter as fontes do runtime do kit.** A release binária traz cabeçalhos e
+   `ps3recomp_runtime.lib`, mas não `ppu_load_elf`, `ppu_recomp_register`,
+   `ppu_hle_init` nem `ppu_run`; o template de projeto do upstream os linka a
+   partir de `PS3RECOMP_DIR`. Aceitação: um projeto que resolva esses símbolos.
+3. **Compilar os 17 blocos gerados.** Espere tempos longos de compilação:
+   9,57 M linhas. Aceitação: objetos produzidos sem erros, ou uma lista
+   documentada dos que falham.
+4. **Iniciar até o primeiro quadro.** Aceitação: um quadro capturado, não uma
+   linha de log.
+5. **Reelevar com os nomes do Ghidra.** 1.289 símbolos do motor já foram
+   extraídos; passá-los por `--names` torna o código gerado legível. Faça isso
+   depois da primeira compilação bem-sucedida, para o diff continuar revisável.
+6. **Atacar a TOC do `rom.psarc`.** Necessário antes de qualquer conversão de
+   assets. O leitor agora é localizável na imagem descriptografada, em vez de
+   adivinhado.
 
 ## O que deliberadamente não foi feito
 
-- Nenhum nome de função, endereço ou lista de importações foi inventado para a
-  imagem de varejo. A carga é criptografada; reportar tais dados seria
-  fabricação.
-- Nenhuma chave de descriptografia foi gerada, adivinhada ou embutida.
-- Nenhum stub foi escrito para uma biblioteca que não tenha sido observada em
-  uma tabela de importações real.
-- Nenhum diretório `tools/` foi criado, porque nenhuma ferramenta auxiliar além
-  de `scripts/` foi necessária; andaimes vazios não são progresso.
+- Nenhum nome de função, endereço ou lista de importações foi inventado. Cada
+  número da documentação remete a um comando do registro de validação.
+- Nenhum stub foi escrito para uma biblioteca que o runtime já implementa.
+- O C++ gerado não foi editado à mão; ele é regenerado a cada elevação.
+- Nenhum byte do jogo foi comitado. A imagem descriptografada fica em
+  `work/game/`, que está no `.gitignore`.
 
 ## Riscos
 
 | Risco | Impacto | Mitigação |
 |---|---|---|
-| A descriptografia nunca fica disponível | o projeto não passa do M2 | documentar o requisito exato; manter todas as outras etapas testáveis sem ela |
-| A TOC do `rom.psarc` continua ilegível | conversão de assets impossível | tratar como tarefa de pesquisa, não como bloqueio do trabalho de código |
-| Cobertura da tradução Cg/RSX | a renderização não vai bater | partir da camada RSX do runtime compartilhado, não de um renderizador sob medida |
-| Áudio dependente de SPU | o caminho de áudio pode exigir execução de SPU | ADX é autodescritivo; preferir decodificação no hospedeiro (ADR-0007) |
-| Deriva do backend | a saída recompilada muda em silêncio | fixar o ps3recomp por commit; aplicar patch em vez de bifurcar |
+| 9,57 M linhas podem exceder limites do compilador | a compilação falha de formas inesperadas | dividir mais com `--chunks`; `/bigobj` no MSVC |
+| `cellSpurs` é apenas Partial no upstream | tarefas de SPU podem não rodar | isolar cedo o caminho do `efc_smoke_job` |
+| A TOC do `rom.psarc` continua ilegível | conversão de assets impossível | tarefa de pesquisa, não bloqueio de código |
+| Cobertura da tradução Cg/RSX | a renderização não vai bater | partir da camada RSX do runtime compartilhado |
+| 2 avisos de elevação no fim do segmento | possíveis funções de cauda truncadas | inspecionar `func_00380E00` e `func_004B6F60` |

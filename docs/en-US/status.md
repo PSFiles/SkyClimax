@@ -4,20 +4,24 @@ Last updated: 2026-11-14.
 
 ## Current position
 
-**Milestone reached: M3 — the lift pipeline is proven on a synthetic PS3 ELF.**
-The project is experimental. No recompiled game code exists, and nothing has
-been compiled.
+**Milestone reached: M5 — the decrypted executable is loaded and lifted.** The
+project is experimental. 15,237 functions have been translated to C++, but
+nothing has been compiled and nothing has run.
 
 | Milestone | State | Blocking issue |
 |---|---|---|
 | M0 toolchain installed and validated | validated | — |
 | M1 package opened, inventory reproducible | validated | — |
-| M2 executable container analysed | validated | payload encrypted |
+| M2 executable container analysed | validated | — |
 | M3 lift pipeline proven on a synthetic ELF | validated | — |
-| M4 native build of lifted code | planned | no C/C++ compiler (KI-003) |
-| M5 decrypted EBOOT lifted | planned | no key (KI-001) |
-| M6 runtime boot, first frame | planned | depends on M4 and M5 |
+| M4 native build of lifted code | planned | no compiler (KI-003), no runtime sources (KI-009) |
+| M5 decrypted EBOOT lifted | validated | — |
+| M6 runtime boot, first frame | planned | depends on M4 |
 | M7 playable | planned | depends on M6 |
+
+M4 and M5 are independent: lifting needs no compiler, and building needs no
+further analysis. M5 finished first because the owner supplied the decrypted
+image.
 
 ## Task log
 
@@ -31,44 +35,49 @@ been compiled.
 | 2026-11-14 | Characterise Sega FArc (both variants) | done | 2 + 101 records, gzip payloads |
 | 2026-11-14 | Characterise CRI ADX audio | done | 23 files, 44.1 kHz, 1,898.9 s |
 | 2026-11-14 | Probe the PSARC table of contents | blocked | 0/32 entries plausible → `opaque` |
-| 2026-11-14 | Import a PPC64 ELF into Ghidra | done | `PowerPC:BE:64:default`, import succeeded |
 | 2026-11-14 | Lift a synthetic PS3 ELF to C++ | done | 1 function → 1,117 lines |
-| 2026-11-14 | Decrypt the retail EBOOT | blocked | requires a title key or a decrypted dump |
+| 2026-11-14 | Verify the owner-supplied decrypted ELF | done | `e_machine=21`, `e_entry=0x4CDF00`, SHA-256 recorded |
+| 2026-11-14 | Load the real image | done | 11,827 OPDs → 11,338 functions, TOC `0x4ed088` |
+| 2026-11-14 | Extract and resolve firmware imports | done | 207 imports, 14 libraries, 163 NIDs named |
+| 2026-11-14 | Ghidra auto-analysis of the real image | done | 11,541 functions, 118,346 symbols, 358 s |
+| 2026-11-14 | Lift the real image | done | 15,237 functions, 9m10s, 2 warnings |
+| 2026-11-14 | Identify engine and middleware from strings | done | AM2 motion, AET, CRI 3.44.03, ENEPACK |
 | 2026-11-14 | Compile the generated C++ | blocked | no compiler on the host |
+| 2026-11-14 | Link against the runtime | blocked | runtime sources not in the binary release |
 
 ## Next steps, ordered by risk and dependency
 
-1. **Obtain a decrypted `EBOOT.elf`.** Everything downstream is blocked on it.
-   Highest risk, highest value. Acceptance: `e_machine = 21`,
-   `e_entry = 0x4CDF00`, SHA-256 recorded.
-2. **Install MSVC Build Tools, CMake and Ninja.** Unblocks M4 independently of
-   step 1, and can be done in parallel. Acceptance: `cl` and `cmake --version`
-   succeed, and the synthetic lift compiles.
-3. **Lift the real image and count functions.** Acceptance: loader and lifter
-   agree on the function count, and no `has no continuation` warnings remain.
-4. **Group the firmware imports by library.** This determines the HLE scope and
-   therefore the real schedule. Acceptance: a table of library → NID count in
-   the compatibility matrix.
-5. **Attack the `rom.psarc` TOC.** Needed before any asset conversion. Approach:
-   look for the reader in the decrypted EBOOT rather than guessing the format.
-6. **Translate the 101 Cg programs.** Only meaningful once the renderer runs.
+1. **Install MSVC Build Tools, CMake and Ninja.** Unblocks M4. Acceptance: `cl`
+   and `cmake --version` succeed.
+2. **Obtain the toolkit runtime sources.** The binary release ships headers and
+   `ps3recomp_runtime.lib` but not `ppu_load_elf`, `ppu_recomp_register`,
+   `ppu_hle_init` or `ppu_run`; the upstream project template links them from
+   `PS3RECOMP_DIR`. Acceptance: a project that resolves those symbols.
+3. **Compile the 17 generated chunks.** Expect long compile times: 9.57 M lines.
+   Acceptance: objects produced with no errors, or a documented list of the ones
+   that fail.
+4. **Boot to the first frame.** Acceptance: a captured frame, not a log line.
+5. **Re-lift with Ghidra names.** 1,289 engine symbols are already extracted;
+   feeding them through `--names` makes the generated code readable. Do this
+   after the first successful build so the diff stays reviewable.
+6. **Attack the `rom.psarc` TOC.** Needed before any asset conversion. The
+   reader is now findable in the decrypted image rather than a guess.
 
 ## What was deliberately not done
 
-- No function names, addresses or import lists were invented for the retail
-  image. The payload is encrypted; reporting such data would be fabrication.
-- No decryption keys were generated, guessed or embedded.
-- No stub was written for a library that has not been observed in a real import
-  table.
-- No `tools/` directory was created, because no auxiliary tool beyond `scripts/`
-  was needed; empty scaffolding is not progress.
+- No function names, addresses or import lists were invented. Every figure in
+  the documentation traces to a command in the validation log.
+- No stub was written for a library that the runtime already implements.
+- The generated C++ was not hand-edited; it is regenerated on every lift.
+- No game bytes were committed. The decrypted image lives in `work/game/`,
+  which is git-ignored.
 
 ## Risks
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Decryption never becomes available | project cannot pass M2 | document the exact requirement; keep every other stage testable without it |
-| `rom.psarc` TOC stays unreadable | asset conversion impossible | treat as a research task, not a blocker for code work |
-| Cg/RSX translation coverage | rendering will not match | start from the shared runtime's RSX layer, not a bespoke renderer |
-| SPU-heavy audio | audio path may need SPU execution | ADX is self-describing; prefer host decoding (ADR-0007) |
-| Backend drift | recompiled output changes silently | pin ps3recomp by commit; patch rather than fork |
+| 9.57 M lines may exceed compiler limits | build fails in unexpected ways | split further with `--chunks`; MSVC `/bigobj` |
+| `cellSpurs` is only Partial upstream | SPU jobs may not run | isolate the `efc_smoke_job` path early |
+| `rom.psarc` TOC stays unreadable | asset conversion impossible | research task, not a code blocker |
+| Cg/RSX translation coverage | rendering will not match | start from the shared runtime's RSX layer |
+| 2 lift warnings at segment end | possible truncated tail functions | inspect `func_00380E00` and `func_004B6F60` |

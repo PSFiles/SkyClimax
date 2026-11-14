@@ -6,9 +6,10 @@ Recompilação estática de **After Burner Climax** (PlayStation 3, `NPUB30151`)
 para Windows x64 nativo — sem emulador no meio do caminho.
 
 > **Estado: experimental.** O projeto não produziu um executável funcional. O
-> último marco efetivamente alcançado é o **M3: o pipeline de elevação está
-> provado em um ELF de PS3 sintético**. O executável de varejo é criptografado e
-> não pode ser descriptografado sem uma chave fornecida pelo dono do jogo. Veja
+> último marco efetivamente alcançado é o **M5: o executável descriptografado
+> está carregado e elevado — 15.237 funções, 9,57 M linhas de C++**. Nada foi
+> compilado: o hospedeiro não tem toolchain C/C++ e a release binária omite as
+> fontes do runtime. Veja
 > [problemas conhecidos](docs/pt-BR/troubleshooting/known-issues.md).
 
 ## O que é este repositório
@@ -23,7 +24,8 @@ análise de que este título específico precisa:
 | `scripts/check_docs_parity.py` — portão de documentação bilíngue | implementado, passando |
 | `scripts/install-tools.*` — instalação fixada e idempotente da toolchain | implementado |
 | `.github/workflows/ci.yml` — CI no Windows | implementado |
-| Código recompilado do jogo | **não produzido** — bloqueado pela descriptografia |
+| Código elevado do jogo (`generated/`) | **produzido** — 15.237 funções, 9,57 M linhas |
+| Executável compilado | **não produzido** — sem compilador e sem fontes do runtime |
 
 ## O que realmente se sabe sobre o jogo
 
@@ -34,8 +36,11 @@ Tudo abaixo foi medido no pacote de varejo, não presumido:
   firmware alvo `03.0000`.
 - `EBOOT.BIN`: SELF de varejo de 5.656.176 bytes; o ELF embutido é `ET_EXEC`,
   `EM_PPC64`, big-endian, entrada `0x4CDF00` (um descritor OPD no segmento de
-  dados), 8 cabeçalhos de programa. **Todos os segmentos de carga são
-  criptografados com AES** (entropia 7,9973 bits/byte).
+  dados).
+- Imagem descriptografada (fornecida pelo dono, fora deste repositório): 11.338
+  funções a partir de 11.827 descritores OPD, 207 importações de firmware em 14
+  bibliotecas, 1,11 M instruções decodificadas, símbolos do motor AM2 motion,
+  efeitos AET e áudio CRI 3.44.03 recuperados de strings.
 - Assets: PSARC de 407 MB (`rom.psarc`) cuja tabela de conteúdo é opaca, 101
   programas de shader Cg (`.vp`/`.fp`, gzip) em `shader_cg.farc`, 23 fluxos CRI
   ADX (31,6 minutos no total) mais um banco de vozes CRI AFS de 38,9 MB.
@@ -93,16 +98,16 @@ python -m skyclimax farc work/pkg/USRDIR/ps3/shader_cg.farc --extract work/shade
 | M1 | pacote aberto, inventário reproduzível | validado |
 | M2 | contêiner do executável analisado | validado (apenas metadados) |
 | M3 | pipeline de elevação provado em um ELF sintético | validado |
-| M4 | compilação nativa do código elevado | planejado — sem compilador |
-| M5 | EBOOT descriptografado elevado | planejado — sem chave |
+| M4 | compilação nativa do código elevado | planejado — sem compilador e sem fontes do runtime |
+| M5 | EBOOT descriptografado elevado | validado — 15.237 funções |
 | M6 | inicialização do runtime, primeiro quadro | planejado |
 | M7 | jogável | planejado |
 
 ## Limitações conhecidas
 
-1. **O executável é criptografado.** Nenhum nome de função, endereço ou lista de
-   importações é reportado em lugar algum, porque nada disso pode ser verificado.
-   Quem publicar tal lista para este título sem descriptografia está adivinhando.
+1. **Nada está compilado nem executado.** A elevação está completa, mas
+   verificada apenas estruturalmente: não existe arquivo objeto, então nenhuma
+   afirmação sobre comportamento é possível.
 2. **O `rom.psarc` está sem índice.** Sua TOC não corresponde ao layout
    documentado; 96 % da carga do pacote está atualmente ilegível.
 3. **Nada foi compilado.** Não existe toolchain C/C++ no hospedeiro de
