@@ -23,6 +23,7 @@ completos), `todo` (a `TODO(...)` marker is present / há um marcador `TODO(...)
 | `troubleshooting/known-issues.md` | synced |
 | `compatibility-matrix.md` | synced |
 | `development.md` | synced |
+| `status.md` | synced |
 | `guides/analysis-and-recompilation.md` | synced |
 
 ## Reading order / Ordem de leitura
