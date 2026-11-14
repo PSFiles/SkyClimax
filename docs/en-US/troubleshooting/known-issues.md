@@ -203,6 +203,27 @@ window, all CRI middleware: `CriThread` (×several), `CriSr_ProcessServer`,
 producer is a CRI server/client pair, not the GCM callback and not cellAudio
 (which registered key `0x0`, matching queues 2 and 3, not queue 1).
 
-**Next probe.** Dump the CRI threads' stacks with `WAITBT_EVERY` and see what they
-are blocked on; if they are waiting on a CRI primitive the runtime does not
-implement, that primitive is the missing HLE piece.
+**What the thread dump added.** With `WAITBT_EVERY=1` only two threads ever block
+on a queue: `tid=3` on `q=1` and `tid=1` on `q=3` (the latter receiving SPU events,
+`src=0xFFFFFFFF53505501`). The other 19 threads are alive and never touch a queue.
+There are **no** `lwmutex`, semaphore, condvar, event-flag or event-port waits
+anywhere in the log, so the CRI threads are not blocked on a synchronisation
+primitive the runtime fails to implement — they are simply not producing.
+
+**The SPU side is not the problem.** The CRI Sound Renderer image
+(`fp=0x84857EC5B21E5F74`) is imported, lifted and running:
+
+```text
+[SPU] thread_init group=0x1000 index=0 img=0x11528F08 -> tid=0x2000 entry=0x000000F0
+[SPU] group_start id=0x1000 -> LIFTED SPU execution (image 516220944)
+[SPU] tid=0x2000 RUNNING lifted image entry=0x000F0 (image 516220944)
+```
+
+So the lifted SPU code executes; what is missing is the PPU-side CRI server
+answering its own queue.
+
+**Remaining hypothesis.** The CRI initialisation sequence on the PPU side does not
+complete. With 21 threads created, 21 started and only 1 exited, and no thread
+blocked on anything, the next useful step is a debugger attach rather than more
+environment flags: break on `sys_event_queue_push` and confirm no CRI thread ever
+reaches it, then read the guest stack of `CriSr_SignalingServer` directly.

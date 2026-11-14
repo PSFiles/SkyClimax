@@ -212,6 +212,29 @@ operárias `CriThread`. A chave da fila `0x8000CAFE02460300` é o magic próprio
 CRI, então o produtor é um par servidor/cliente da CRI, não o callback do GCM nem
 o cellAudio (que registrou chave `0x0`, correspondendo às filas 2 e 3, não à 1).
 
-**Próxima sondagem.** Despejar as pilhas das threads CRI com `WAITBT_EVERY` e ver
-em que elas estão bloqueadas; se estiverem esperando uma primitiva da CRI que o
-runtime não implementa, essa primitiva é a peça de HLE que falta.
+**O que o despejo de threads acrescentou.** Com `WAITBT_EVERY=1`, apenas duas
+threads bloqueiam em fila: `tid=3` na `q=1` e `tid=1` na `q=3` (esta recebendo
+eventos de SPU, `src=0xFFFFFFFF53505501`). As outras 19 threads estão vivas e nunca
+tocam uma fila. Não há **nenhuma** espera de `lwmutex`, semáforo, variável de
+condição, flag de evento ou porta de evento em todo o log, então as threads CRI não
+estão bloqueadas em uma primitiva de sincronização que o runtime não implementa —
+elas simplesmente não produzem.
+
+**O lado SPU não é o problema.** A imagem do CRI Sound Renderer
+(`fp=0x84857EC5B21E5F74`) é importada, elevada e executa:
+
+```text
+[SPU] thread_init group=0x1000 index=0 img=0x11528F08 -> tid=0x2000 entry=0x000000F0
+[SPU] group_start id=0x1000 -> LIFTED SPU execution (image 516220944)
+[SPU] tid=0x2000 RUNNING lifted image entry=0x000F0 (image 516220944)
+```
+
+Então o código de SPU elevado executa; o que falta é o servidor CRI do lado PPU
+responder à própria fila.
+
+**Hipótese restante.** A sequência de inicialização da CRI no lado PPU não se
+completa. Com 21 threads criadas, 21 iniciadas e apenas 1 encerrada, e nenhuma
+thread bloqueada em nada, o próximo passo útil é anexar um depurador em vez de
+mais flags de ambiente: quebrar em `sys_event_queue_push` e confirmar que nenhuma
+thread CRI chega lá, depois ler a pilha do convidado da `CriSr_SignalingServer`
+diretamente.
