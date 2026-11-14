@@ -66,16 +66,22 @@ layer, the RSX command stream, `cellResc` and `cellSpurs` are all live.
 - **The title idles.** After the flips it blocks in `event_queue_receive`
   (`cia=0x004E3480`), which is the cellSysutil event loop waiting for an event
   that never arrives.
+- **The CMake build drops the SPU registry.** Copying the generated `registry`
+  file to `spu_workloads.c` is not enough — the title still logs
+  `no lifted image (fp=0x9470BA4123AAAB63)`. `scripts/build.py` compiles the
+  registry correctly; the CMake path needs the generator's expected filenames.
 - **The PPU code is built `/Od`.** This host has 7.9 GB RAM and a 600k-line TU
   at `/O1` needs ~2.5 GB and ~10 minutes; the build pages out badly. Rebuild
   with `scripts/build.py --optimize` on a machine with more memory.
 
 ## Next steps, ordered by risk and dependency
 
-1. **Find why the event loop never receives.** Inspect the guest callback
-   registered by `cellSysutilRegisterCallback` (`func=0x004D7060`) and whether
-   the runtime ever fires slot 0. Acceptance: the log advances past
-   `event_queue_receive` without a timeout.
+1. **Find why the event loop never receives.** The GCM queue handler was the
+   first suspect and is now ruled out (KI-010: patched, rebuilt, no change).
+   The wait returns immediately rather than timing out, so log the return value
+   of `sys_event_queue_receive` on `q=1` and every `sys_event_queue_push` with
+   its target queue, to name the producer that never runs. Acceptance: the log
+   advances past `event_queue_receive`.
 2. **Verify frame content.** Capture the presented surface and compare it with a
    reference run. Acceptance: a non-black frame with the title's own output.
 3. **Run on a machine with a GPU** so D3D12 uses hardware and the RSX path is

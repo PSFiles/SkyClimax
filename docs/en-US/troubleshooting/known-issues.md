@@ -173,12 +173,19 @@ FIFO-circling heuristic even states that the "SetQueueHandler / context-switch
 path" is not modelled. The argument the game passes is a guest OPD, so calling it
 as a host pointer would jump into guest code.
 
-**Fix.** `tools/patches/apply.py` patch 0001 keeps the value as a 32-bit guest OPD
-and dispatches it through `g_ps3_guest_caller` at the same points the flip
-handler fires — the pattern the runtime already uses for
-`cellGcmSetFlipHandler`.
+**Hypothesis tested and falsified.** `tools/patches/apply.py` patch 0001 keeps the
+value as a 32-bit guest OPD and dispatches it through `g_ps3_guest_caller` at the
+same points the flip handler fires. It was applied, the runtime was rebuilt from
+source, and the title behaved identically: 612 `event_queue_receive` calls in
+100 s, still stalled. The patch has been reverted and the script kept only as a
+record of the experiment.
 
-**Why it needs a runtime rebuild.** The project links the prebuilt
-`ps3recomp_runtime.lib`, which cannot be patched. The fix therefore requires
-building the runtime from source, which is what `src/port/CMakeLists.txt` does
-now that `reg.exe` is no longer blocked.
+**What this rules out.** The queue handler is not what wakes that wait. The wait
+returns quickly rather than after its nominal timeout (612 calls in 100 s cannot
+be 9 s each), so the receive is most likely failing immediately and the title is
+retrying, which points at the queue itself or at the producer that should push to
+it — not at the GCM callback.
+
+**Next probe.** Log the return value of `sys_event_queue_receive` for `q=1`, and
+log every `sys_event_queue_push` with its target queue id, so the producer that
+never runs can be identified by name rather than guessed.

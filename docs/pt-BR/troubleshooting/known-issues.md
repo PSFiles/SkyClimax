@@ -181,12 +181,19 @@ SetQueueHandler / context-switch" não está modelado. O argumento passado pelo
 jogo é um OPD do convidado, então chamá-lo como ponteiro do hospedeiro saltaria
 para código do convidado.
 
-**Correção.** O patch 0001 de `tools/patches/apply.py` mantém o valor como OPD de
-convidado de 32 bits e o despacha por `g_ps3_guest_caller` nos mesmos pontos em
-que o handler de flip dispara — o padrão que o runtime já usa para
-`cellGcmSetFlipHandler`.
+**Hipótese testada e refutada.** O patch 0001 de `tools/patches/apply.py` mantém
+o valor como OPD de convidado de 32 bits e o despacha por `g_ps3_guest_caller`
+nos mesmos pontos em que o handler de flip dispara. Ele foi aplicado, o runtime
+foi recompilado do código-fonte e o título se comportou de forma idêntica: 612
+chamadas a `event_queue_receive` em 100 s, ainda travado. O patch foi revertido e
+o script mantido apenas como registro do experimento.
 
-**Por que exige recompilar o runtime.** O projeto linka a
-`ps3recomp_runtime.lib` pré-compilada, que não pode ser corrigida. A correção
-exige compilar o runtime do código-fonte, que é o que `src/port/CMakeLists.txt`
-faz agora que o `reg.exe` não está mais bloqueado.
+**O que isso descarta.** O handler de fila não é o que acorda essa espera. A
+espera retorna rápido em vez de aguardar o tempo nominal (612 chamadas em 100 s
+não podem ser 9 s cada), então o recebimento provavelmente falha de imediato e o
+título está repetindo a tentativa, o que aponta para a própria fila ou para o
+produtor que deveria empurrar algo nela — não para o callback do GCM.
+
+**Próxima sondagem.** Registrar o valor de retorno de `sys_event_queue_receive`
+para `q=1` e registrar cada `sys_event_queue_push` com o id da fila de destino,
+para identificar pelo nome o produtor que nunca executa.

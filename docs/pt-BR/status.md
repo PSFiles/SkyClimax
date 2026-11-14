@@ -67,6 +67,10 @@ todos ativos.
 - **O título fica ocioso.** Depois dos flips ele bloqueia em
   `event_queue_receive` (`cia=0x004E3480`), que é o laço de eventos do
   cellSysutil esperando um evento que nunca chega.
+- **A build CMake perde o registro de SPU.** Copiar o arquivo gerado `registry`
+  para `spu_workloads.c` não basta — o título ainda registra
+  `no lifted image (fp=0x9470BA4123AAAB63)`. O `scripts/build.py` compila o
+  registro corretamente; o caminho CMake precisa dos nomes que o gerador espera.
 - **O código de PPU está compilado em `/Od`.** Este hospedeiro tem 7,9 GB de RAM
   e uma UT de 600 mil linhas em `/O1` precisa de ~2,5 GB e ~10 minutos; a
   compilação pagina demais. Recompile com `scripts/build.py --optimize` em uma
@@ -74,10 +78,12 @@ todos ativos.
 
 ## Próximos passos, ordenados por risco e dependência
 
-1. **Descobrir por que o laço de eventos nunca recebe.** Inspecionar o callback
-   do convidado registrado por `cellSysutilRegisterCallback` (`func=0x004D7060`)
-   e se o runtime chega a disparar o slot 0. Aceitação: o log avança além de
-   `event_queue_receive` sem estourar o tempo limite.
+1. **Descobrir por que o laço de eventos nunca recebe.** O handler de fila do GCM
+   foi o primeiro suspeito e está descartado (KI-010: aplicado, recompilado, sem
+   mudança). A espera retorna de imediato em vez de estourar o tempo, então
+   registre o valor de retorno de `sys_event_queue_receive` em `q=1` e cada
+   `sys_event_queue_push` com a fila de destino, para nomear o produtor que nunca
+   executa. Aceitação: o log avança além de `event_queue_receive`.
 2. **Verificar o conteúdo do quadro.** Capturar a superfície apresentada e
    comparar com uma execução de referência. Aceitação: um quadro não preto com a
    saída do próprio título.
