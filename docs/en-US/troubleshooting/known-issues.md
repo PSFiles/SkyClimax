@@ -148,3 +148,37 @@ consumes through `PS3RECOMP_DIR`.
 **Verified.** `git log -1` reports `ae92407bb1d899e3d32143e360fe6e6d4d8fa1b5`
 and `runtime/ppu/` contains the four boot sources. Linking is still untested
 because the compiler is missing (KI-003).
+
+## KI-010 — the title stalls because the GCM queue handler is never called
+
+**Severity:** blocking (M7)
+
+**Observed.** After four `SetConvertAndFlip` calls the title blocks forever in
+`sys_event_queue_receive` on the queue it created itself:
+
+```text
+[evt] queue_create -> id=1 key=0x8000CAFE02460300 size=2
+[cellGcmSys] SetQueueHandler(00000000004D9558)
+[WAIT] event_queue_receive(q=1 timeout=9000000) tid=3 cia=0x004E3480 lr=0x002C698C
+```
+
+The guest function at `0x002C68A0` builds the key `0x8000CAFE02460300`, creates
+the queue, and then waits in a 100-iteration loop with a 9 s timeout, destroying
+the queue afterwards. It is waiting for the handler it registered through
+`cellGcmSetQueueHandler` (NID `0x0A862772`).
+
+**Cause.** `libs/video/cellGcmSys.c` stores the argument in a *host* function
+pointer (`CellGcmQueueHandler`) and never invokes it. The upstream comment at the
+FIFO-circling heuristic even states that the "SetQueueHandler / context-switch
+path" is not modelled. The argument the game passes is a guest OPD, so calling it
+as a host pointer would jump into guest code.
+
+**Fix.** `tools/patches/apply.py` patch 0001 keeps the value as a 32-bit guest OPD
+and dispatches it through `g_ps3_guest_caller` at the same points the flip
+handler fires — the pattern the runtime already uses for
+`cellGcmSetFlipHandler`.
+
+**Why it needs a runtime rebuild.** The project links the prebuilt
+`ps3recomp_runtime.lib`, which cannot be patched. The fix therefore requires
+building the runtime from source, which is what `src/port/CMakeLists.txt` does
+now that `reg.exe` is no longer blocked.

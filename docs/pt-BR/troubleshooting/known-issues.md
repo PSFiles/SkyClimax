@@ -155,3 +155,38 @@ nada, e o `main.cpp` do template do upstream declara que `ppu_load_elf`,
 `ae92407bb1d899e3d32143e360fe6e6d4d8fa1b5` e `runtime/ppu/` contém as quatro
 fontes de inicialização. O link continua não testado porque falta o compilador
 (KI-003).
+
+## KI-010 — o título trava porque o handler de fila do GCM nunca é chamado
+
+**Severidade:** bloqueante (M7)
+
+**Observado.** Depois de quatro chamadas a `SetConvertAndFlip` o título bloqueia
+para sempre em `sys_event_queue_receive` na fila que ele mesmo criou:
+
+```text
+[evt] queue_create -> id=1 key=0x8000CAFE02460300 size=2
+[cellGcmSys] SetQueueHandler(00000000004D9558)
+[WAIT] event_queue_receive(q=1 timeout=9000000) tid=3 cia=0x004E3480 lr=0x002C698C
+```
+
+A função do convidado em `0x002C68A0` monta a chave `0x8000CAFE02460300`, cria a
+fila e então espera em um laço de 100 iterações com timeout de 9 s, destruindo a
+fila em seguida. Ela espera pelo handler que registrou via
+`cellGcmSetQueueHandler` (NID `0x0A862772`).
+
+**Causa.** `libs/video/cellGcmSys.c` guarda o argumento em um ponteiro de função
+do *hospedeiro* (`CellGcmQueueHandler`) e nunca o invoca. O próprio comentário do
+upstream, na heurística de circulação da FIFO, afirma que o "caminho
+SetQueueHandler / context-switch" não está modelado. O argumento passado pelo
+jogo é um OPD do convidado, então chamá-lo como ponteiro do hospedeiro saltaria
+para código do convidado.
+
+**Correção.** O patch 0001 de `tools/patches/apply.py` mantém o valor como OPD de
+convidado de 32 bits e o despacha por `g_ps3_guest_caller` nos mesmos pontos em
+que o handler de flip dispara — o padrão que o runtime já usa para
+`cellGcmSetFlipHandler`.
+
+**Por que exige recompilar o runtime.** O projeto linka a
+`ps3recomp_runtime.lib` pré-compilada, que não pode ser corrigida. A correção
+exige compilar o runtime do código-fonte, que é o que `src/port/CMakeLists.txt`
+faz agora que o `reg.exe` não está mais bloqueado.
