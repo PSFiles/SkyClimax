@@ -1,16 +1,16 @@
 # Compilação
 
-Estado: **a compilação nativa nunca foi executada neste hospedeiro.** Não há
-compilador C/C++, CMake ou Ninja instalados. As etapas 1–4 estão validadas; as
-etapas 5–7 estão planejadas.
+Estado: **validado de ponta a ponta.** `scripts/build.py` compila 24 unidades de
+tradução de PPU e 5 de SPU com clang-cl e linka `build/SkyClimax.exe` (295,6 MB).
+As etapas 1–6 estão validadas; a etapa 7 executa mas não chega à jogabilidade.
 
 ## Pré-requisitos
 
 | Componente | Versão | Motivo |
 |---|---|---|
 | Visual Studio Build Tools 2022 | 17.x, "Desktop development with C++" | o MSVC fornece `cl`; o código gerado usa `__declspec(thread)` |
-| CMake | ≥ 3.20 | geração da build |
-| Ninja | ≥ 1.11 | builds incrementais rápidas |
+| LLVM / clang-cl | 23.1.5 | o único compilador que aceita o cabeçalho gerado |
+| Ninja | ≥ 1.11 | geração da build (vem com o Build Tools) |
 | Windows SDK | 10.0.22621 ou mais recente | cabeçalhos de D3D12 |
 | Fontes do runtime do ps3recomp | v0.19.0 | `ppu_load_elf`, `ppu_recomp_register`, `ppu_hle_init`, `ppu_run` |
 
@@ -79,25 +79,31 @@ bibliotecas importadas; `generate_stubs.py` existe para bibliotecas ausentes.
 Mantenha-o como recurso para quando um NID se revelar não implementado em
 execução.
 
-## Etapa 6 — configurar e compilar
+## Etapa 6 — compilar
 
 ```bash
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-      -DPS3RECOMP_DIR=/path/to/ps3recomp
-cmake --build build
+python scripts/build.py --jobs 2
 ```
 
-Não executado. Espere dois problemas primeiro: as fontes do runtime precisam
-estar presentes, e 9,57 M linhas de C++ gerado podem exigir `/bigobj` e mais
-divisão em blocos.
+Validado: 24 unidades de PPU + 5 de SPU, 0 erros, `build/SkyClimax.exe` 295,6 MB.
+
+`scripts/build.py` existe porque o CMake não consegue rodar neste hospedeiro: sua
+sondagem de compilador invoca `reg.exe`, que o sandbox bloqueia. O script localiza
+o MSVC, o Windows SDK e o clang-cl, emite `build/build.ninja` e executa o Ninja.
+As unidades de PPU são compiladas em `/Od` por padrão porque uma unidade de 600
+mil linhas em `/O1` precisa de ~2,5 GB e este hospedeiro tem 7,9 GB; use
+`--optimize` em uma máquina maior.
 
 ## Etapa 7 — executar
 
 ```bash
-./build/skyclimax.exe --log-level info
+./build/SkyClimax.exe work/game/PS3_GAME/USRDIR/EBOOT.elf
 ```
 
-Não executado.
+Validado até a apresentação de quadros: o OPD de entrada é despachado, o D3D12
+inicializa (WARP neste hospedeiro), a janela abre, o `rom.psarc` é aberto e sua
+TOC lida, e `SetConvertAndFlip` roda quatro vezes. O título então bloqueia em
+`event_queue_receive` e nunca chega à jogabilidade.
 
 ## O que "concluído" significa por etapa
 

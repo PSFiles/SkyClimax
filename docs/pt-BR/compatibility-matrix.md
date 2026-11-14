@@ -31,9 +31,10 @@ comando e um resultado registrados).
 | Geração de C++ | validado | 15.237 funções, 17 blocos, 9.571.078 linhas |
 | Completude da elevação | validado | 2 avisos em 15.237 funções, ambos no fim do segmento |
 | Ligação das chamadas HLE | validado | 224 sítios `ps3_hle_call` no código gerado |
-| Compilação do C++ | planejado | sem compilador (KI-003) |
-| Link nativo | planejado | exige as fontes do runtime (KI-009) |
-| Inicialização do runtime | planejado | depende dos dois anteriores |
+| Compilação do C++ | validado | 24 UTs de PPU, 0 erros, clang-cl 23.1.5 |
+| Link nativo | validado | `SkyClimax.exe`, 295,6 MB, 0 não resolvidos |
+| Inicialização do runtime | validado | OPD de entrada despachado, D3D12 ativo, quadros apresentados |
+| Elevação de imagens de SPU | validado | 3 imagens, fingerprint `9470BA4123AAAB63` |
 
 ## Ghidra
 
@@ -57,8 +58,8 @@ comando e um resultado registrados).
 
 | Subsistema | Estado | Observação |
 |---|---|---|
-| Execução de PPU | planejado | código elevado, não compilado |
-| Execução de SPU | planejado | `cellSpurs` 24 importações, `efc_smoke_job` presente |
+| Execução de PPU | validado | o código do convidado executa; o título fica ocioso em `event_queue_receive` |
+| Execução de SPU | validado | a tarefa SPURS executa e espera trabalho |
 | Renderização RSX / GCM | planejado | 101 programas Cg precisam ser traduzidos |
 | Áudio (ADX/AFS) | planejado | decodificadores CRI presentes para PPU e SPU; decodificação no hospedeiro é preferível (ADR-0007) |
 | Entrada (cellPad) | planejado | 6 importações, exportadas por `sys_io` |
@@ -78,3 +79,5 @@ comando e um resultado registrados).
 | 2026-11-14 | `ppu_loader.py EBOOT.elf` | 11.338 funções, 207 importações |
 | 2026-11-14 | `ghidra_analyze.py EBOOT.elf` | 11.541 funções, 358 s de análise |
 | 2026-11-14 | `ppu_lifter.py EBOOT.elf` | 15.237 funções, 9m10s, 2 avisos |
+| 2026-11-14 | `scripts/build.py` | 24 + 5 UTs, `SkyClimax.exe` 295,6 MB, 0 erros |
+| 2026-11-14 | `SkyClimax.exe EBOOT.elf` | inicializa, D3D12 ativo, 4 flips, TOC do PSARC lida |

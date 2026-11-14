@@ -30,9 +30,10 @@ Three states are used consistently: **planned** (designed, no code), **implement
 | C++ generation | validated | 15,237 functions, 17 chunks, 9,571,078 lines |
 | Lift completeness | validated | 2 warnings in 15,237 functions, both at segment end |
 | HLE call wiring | validated | 224 `ps3_hle_call` sites in generated code |
-| C++ compilation | planned | no compiler (KI-003) |
-| Native link | planned | needs runtime sources (KI-009) |
-| Runtime boot | planned | depends on the two above |
+| C++ compilation | validated | 24 PPU TUs, 0 errors, clang-cl 23.1.5 |
+| Native link | validated | `SkyClimax.exe`, 295.6 MB, 0 unresolved |
+| Runtime boot | validated | entry OPD dispatched, D3D12 up, frames presented |
+| SPU image lifting | validated | 3 images, fingerprint `9470BA4123AAAB63` |
 
 ## Ghidra
 
@@ -56,8 +57,8 @@ Three states are used consistently: **planned** (designed, no code), **implement
 
 | Subsystem | State | Note |
 |---|---|---|
-| PPU execution | planned | code lifted, not compiled |
-| SPU execution | planned | `cellSpurs` 24 imports, `efc_smoke_job` present |
+| PPU execution | validated | guest code runs; title idles in `event_queue_receive` |
+| SPU execution | validated | SPURS task runs and waits for work |
 | RSX / GCM rendering | planned | 101 Cg programs must be translated |
 | Audio (ADX/AFS) | planned | CRI decoders present for PPU and SPU; host decoding preferred (ADR-0007) |
 | Input (cellPad) | planned | 6 imports, exported through `sys_io` |
@@ -77,3 +78,5 @@ Three states are used consistently: **planned** (designed, no code), **implement
 | 2026-11-14 | `ppu_loader.py EBOOT.elf` | 11,338 functions, 207 imports |
 | 2026-11-14 | `ghidra_analyze.py EBOOT.elf` | 11,541 functions, 358 s analysis |
 | 2026-11-14 | `ppu_lifter.py EBOOT.elf` | 15,237 functions, 9m10s, 2 warnings |
+| 2026-11-14 | `scripts/build.py` | 24 + 5 TUs, `SkyClimax.exe` 295.6 MB, 0 errors |
+| 2026-11-14 | `SkyClimax.exe EBOOT.elf` | boots, D3D12 init, 4 flips, PSARC TOC read |

@@ -18,6 +18,10 @@ declarado disponível.
 | pycryptodome | 4.4.0 | PyPI | `Crypto.__version__` | `4.4.0` |
 | LIEF | 1.0.0 | PyPI | `lief.__version__` | `1.0.0-d05b3499b` |
 | ps3recomp | 0.19.0 | arquivo fornecido | `VERSION.txt` | `commit ae92407b…`, `win-x64` |
+| VS Build Tools | 17.14.45 (MSVC 14.44.35207) | instalação manual | `vswhere -latest` | `C://Program Files (x86)\Microsoft Visual Studio\2022\BuildTools` |
+| Windows SDK | 10.0.26100.0 | vem com o Build Tools | listagem de diretório | `10.0.26100.0` |
+| LLVM / clang-cl | 23.1.5 | release do GitHub `llvmorg-23.1.5` | `clang-cl --version` | `clang version 23.1.5` |
+| Ninja | vem com o Build Tools | — | `ninja --version` | usado via `scripts/build.py` |
 
 ## O Ghidra exige JDK 25, não JDK 21
 
@@ -64,10 +68,24 @@ As ferramentas usadas pelo SkyClimax são `pkg_extract.py`, `ppu_loader.py`,
 `ppu_lifter.py`, `ppu_disasm.py`, `generate_stubs.py`, `ghidra_analyze.py` e
 `unfself.py`.
 
-## Lacuna da toolchain Windows
+## Por que clang-cl e não cl.exe
 
-`cl`, `cmake`, `ninja`, `gcc` e `clang` estão todos ausentes desta máquina,
-portanto nenhum executável nativo pode ser produzido aqui. O C++ gerado é,
-portanto, verificado estruturalmente e por inspeção, nunca por compilação.
-Instalar o Visual Studio Build Tools é o único pré-requisito que desbloqueia o
-próximo marco; veja [compilação](../build/build.md).
+O `ppu_recomp.h` gerado usa `__atomic_load_n`, `__atomic_store_n`,
+`__builtin_bswap32/64` e `__builtin_expect` incondicionalmente. O `cl.exe` não
+tem equivalente, e o cabeçalho é gerado por máquina, então não pode ser
+corrigido à mão. A própria CI do kit faz a verificação de compilação do caminho
+Windows com clang-cl, que é portanto o compilador suportado aqui. O MSVC ainda
+fornece os cabeçalhos, as bibliotecas e o `link.exe`; o clang-cl é apenas o
+front end.
+
+## Por que o CMake não é usado
+
+A sondagem de compilador do CMake invoca `reg.exe` para consultar a instalação
+do Visual Studio. Esse programa é bloqueado pela lista negra deste ambiente, e o
+bloqueio não pode ser aprovado a partir de um comando. Em vez de contornar um
+controle de segurança, a compilação é conduzida por `scripts/build.py`, que
+localiza a toolchain, emite `build/build.ninja` para as 24 unidades de tradução
+e executa o Ninja. `src/port/CMakeLists.txt` é mantido para hospedeiros onde o
+CMake é utilizável.
+
+Veja [compilação](../build/build.md) para o procedimento.

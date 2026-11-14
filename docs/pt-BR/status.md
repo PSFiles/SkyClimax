@@ -4,82 +4,86 @@
 
 ## Posição atual
 
-**Marco alcançado: M5 — o executável descriptografado está carregado e elevado.**
-O projeto é experimental. 15.237 funções foram traduzidas para C++, mas nada foi
-compilado e nada foi executado.
+**Marco alcançado: M6 — o executável recompilado inicializa e apresenta
+quadros.** Não é jogável: o título carrega seus arquivos, sobe o renderizador e
+então fica em espera ociosa, e o único dispositivo disponível neste hospedeiro é
+o rasterizador por software.
 
-| Marco | Estado | Bloqueio |
+| Marco | Estado | Observação |
 |---|---|---|
-| M0 toolchain instalada e validada | validado | — |
-| M1 pacote aberto, inventário reproduzível | validado | — |
-| M2 contêiner do executável analisado | validado | — |
-| M3 pipeline de elevação provado em um ELF sintético | validado | — |
-| M4 compilação nativa do código elevado | planejado | sem compilador (KI-003), sem fontes do runtime (KI-009) |
-| M5 EBOOT descriptografado elevado | validado | — |
-| M6 inicialização do runtime, primeiro quadro | planejado | depende de M4 |
-| M7 jogável | planejado | depende de M6 |
-
-M4 e M5 são independentes: elevar não precisa de compilador, e compilar não
-precisa de mais análise. M5 terminou primeiro porque o dono forneceu a imagem
-descriptografada.
+| M0 toolchain instalada e validada | validado | clang-cl 23.1.5 + MSVC 14.44 + Ninja |
+| M1 pacote aberto, inventário reproduzível | validado | 46 arquivos |
+| M2 contêiner do executável analisado | validado | layout SELF + ELF |
+| M3 pipeline de elevação provado em um ELF sintético | validado | 1 função |
+| M4 compilação nativa do código elevado | validado | 24 UTs de PPU + 5 de SPU → executável de 295,6 MB |
+| M5 EBOOT descriptografado elevado | validado | 15.237 funções |
+| M6 inicialização do runtime, primeiro quadro | validado | quadros apresentados; conteúdo não verificado |
+| M7 jogável | planejado | bloqueado pela espera ociosa e pela disponibilidade de GPU |
 
 ## Registro de tarefas
 
 | Data | Tarefa | Estado | Evidência |
 |---|---|---|---|
-| 2026-11-14 | Instalar e validar Ghidra, JDK, Node, REA e a pilha Python | feito | `scripts/verify-tools.ps1` → 6/6 OK |
-| 2026-11-14 | Analisar o cabeçalho do pacote de varejo | feito | `pkg-info`: 46 itens, `total_size` == tamanho do arquivo |
-| 2026-11-14 | Extrair o pacote | feito | 46 arquivos, 551 MB |
-| 2026-11-14 | Analisar o PARAM.SFO | feito | `TITLE = After Burner Climax`, `TITLE_ID = NPUB30151` |
-| 2026-11-14 | Analisar o contêiner SELF | feito | entrada `0x4CDF00`, 8 phdrs, `retail_encrypted: true` |
-| 2026-11-14 | Caracterizar o Sega FArc (ambas as variantes) | feito | 2 + 101 registros, cargas gzip |
-| 2026-11-14 | Caracterizar o áudio CRI ADX | feito | 23 arquivos, 44,1 kHz, 1.898,9 s |
-| 2026-11-14 | Sondar a tabela de conteúdo do PSARC | bloqueado | 0/32 entradas plausíveis → `opaque` |
-| 2026-11-14 | Elevar um ELF de PS3 sintético para C++ | feito | 1 função → 1.117 linhas |
+| 2026-11-14 | Instalar e validar a toolchain | feito | `scripts/verify-tools.ps1` → 6/6 OK |
+| 2026-11-14 | Extrair e analisar o pacote | feito | 46 arquivos; leitores de `PARAM.SFO`, FArc, ADX, PSARC |
 | 2026-11-14 | Verificar o ELF descriptografado fornecido pelo dono | feito | `e_machine=21`, `e_entry=0x4CDF00`, SHA-256 registrado |
-| 2026-11-14 | Carregar a imagem real | feito | 11.827 OPDs → 11.338 funções, TOC `0x4ed088` |
-| 2026-11-14 | Extrair e resolver as importações de firmware | feito | 207 importações, 14 bibliotecas, 163 NIDs nomeados |
-| 2026-11-14 | Auto-análise do Ghidra na imagem real | feito | 11.541 funções, 118.346 símbolos, 358 s |
-| 2026-11-14 | Elevar a imagem real | feito | 15.237 funções, 9m10s, 2 avisos |
-| 2026-11-14 | Identificar motor e middleware pelas strings | feito | AM2 motion, AET, CRI 3.44.03, ENEPACK |
-| 2026-11-14 | Compilar o C++ gerado | bloqueado | sem compilador no hospedeiro |
-| 2026-11-14 | Linkar contra o runtime | bloqueado | fontes do runtime ausentes da release binária |
+| 2026-11-14 | Carregar a imagem real | feito | 11.338 funções, 207 importações / 14 bibliotecas |
+| 2026-11-14 | Auto-análise do Ghidra | feito | 11.541 funções, 118.346 símbolos, 358 s |
+| 2026-11-14 | Elevar a imagem real | feito | 15.237 funções, 9.571.078 linhas |
+| 2026-11-14 | Compilar o código elevado | feito | 24 UTs, 0 erros, `SkyClimax.exe` 295,6 MB |
+| 2026-11-14 | Elevar as imagens de SPU embutidas | feito | 3 imagens, fingerprint `9470BA4123AAAB63` |
+| 2026-11-14 | Iniciar até o primeiro quadro | feito | init D3D12, `SetConvertAndFlip` ×4, TOC do `rom.psarc` lida |
+| 2026-11-14 | Chegar à jogabilidade | bloqueado | fica ocioso em `event_queue_receive` |
+
+## O que o log de inicialização prova
+
+Citado de `work/reports/run2.log`:
+
+```text
+[ppu] loaded 2 PT_LOAD segments, entry OPD 0x004CDF00
+[boot] dispatching entry OPD 0x004CDF00 (stack top 0x0FF00000)
+[ppu] run: code 0x00010230, toc 0x004ED088, sp 0x0FEFFF20
+[D3D12] Initialization complete (1280x720, 2 buffers, pipeline=ready)
+[rsx] D3D12 backend init OK -- window open
+[fs] open '/dev_bdvd/PS3_GAME/USRDIR/ps3/rom.psarc' -> fd 3
+[fs] read fd=3 nbytes=48 -> 48 (magic=50534152, total=48)
+[fs] read fd=3 nbytes=31676 -> 31676
+[fs] open '/dev_bdvd/PS3_GAME/USRDIR/ps3/shader_cg.farc' -> fd 4
+[cellResc] SetConvertAndFlip(src=260046848) -> flip
+```
+
+`50534152` é `PSAR`: o jogo abre o próprio arquivo de 407 MB e lê a tabela de
+conteúdo que este projeto não conseguiu analisar estaticamente. A camada de
+arquivos do runtime, o fluxo de comandos RSX, o `cellResc` e o `cellSpurs` estão
+todos ativos.
+
+## Limitações conhecidas neste marco
+
+- **Sem GPU de hardware neste hospedeiro.** O D3D12 cai para o WARP ("Microsoft
+  Basic Render Driver"), então nada aqui diz sobre desempenho ou correção de
+  renderização.
+- **Sem dispositivo de áudio.** O `cellAudio` registra `Failed to get default
+  audio endpoint` e continua em silêncio.
+- **O título fica ocioso.** Depois dos flips ele bloqueia em
+  `event_queue_receive` (`cia=0x004E3480`), que é o laço de eventos do
+  cellSysutil esperando um evento que nunca chega.
+- **O código de PPU está compilado em `/Od`.** Este hospedeiro tem 7,9 GB de RAM
+  e uma UT de 600 mil linhas em `/O1` precisa de ~2,5 GB e ~10 minutos; a
+  compilação pagina demais. Recompile com `scripts/build.py --optimize` em uma
+  máquina com mais memória.
 
 ## Próximos passos, ordenados por risco e dependência
 
-1. **Instalar MSVC Build Tools, CMake e Ninja.** Desbloqueia o M4. Aceitação:
-   `cl` e `cmake --version` funcionam.
-2. **Obter as fontes do runtime do kit.** A release binária traz cabeçalhos e
-   `ps3recomp_runtime.lib`, mas não `ppu_load_elf`, `ppu_recomp_register`,
-   `ppu_hle_init` nem `ppu_run`; o template de projeto do upstream os linka a
-   partir de `PS3RECOMP_DIR`. Aceitação: um projeto que resolva esses símbolos.
-3. **Compilar os 17 blocos gerados.** Espere tempos longos de compilação:
-   9,57 M linhas. Aceitação: objetos produzidos sem erros, ou uma lista
-   documentada dos que falham.
-4. **Iniciar até o primeiro quadro.** Aceitação: um quadro capturado, não uma
-   linha de log.
-5. **Reelevar com os nomes do Ghidra.** 1.289 símbolos do motor já foram
-   extraídos; passá-los por `--names` torna o código gerado legível. Faça isso
-   depois da primeira compilação bem-sucedida, para o diff continuar revisável.
-6. **Atacar a TOC do `rom.psarc`.** Necessário antes de qualquer conversão de
-   assets. O leitor agora é localizável na imagem descriptografada, em vez de
-   adivinhado.
-
-## O que deliberadamente não foi feito
-
-- Nenhum nome de função, endereço ou lista de importações foi inventado. Cada
-  número da documentação remete a um comando do registro de validação.
-- Nenhum stub foi escrito para uma biblioteca que o runtime já implementa.
-- O C++ gerado não foi editado à mão; ele é regenerado a cada elevação.
-- Nenhum byte do jogo foi comitado. A imagem descriptografada fica em
-  `work/game/`, que está no `.gitignore`.
-
-## Riscos
-
-| Risco | Impacto | Mitigação |
-|---|---|---|
-| 9,57 M linhas podem exceder limites do compilador | a compilação falha de formas inesperadas | dividir mais com `--chunks`; `/bigobj` no MSVC |
-| `cellSpurs` é apenas Partial no upstream | tarefas de SPU podem não rodar | isolar cedo o caminho do `efc_smoke_job` |
-| A TOC do `rom.psarc` continua ilegível | conversão de assets impossível | tarefa de pesquisa, não bloqueio de código |
-| Cobertura da tradução Cg/RSX | a renderização não vai bater | partir da camada RSX do runtime compartilhado |
-| 2 avisos de elevação no fim do segmento | possíveis funções de cauda truncadas | inspecionar `func_00380E00` e `func_004B6F60` |
+1. **Descobrir por que o laço de eventos nunca recebe.** Inspecionar o callback
+   do convidado registrado por `cellSysutilRegisterCallback` (`func=0x004D7060`)
+   e se o runtime chega a disparar o slot 0. Aceitação: o log avança além de
+   `event_queue_receive` sem estourar o tempo limite.
+2. **Verificar o conteúdo do quadro.** Capturar a superfície apresentada e
+   comparar com uma execução de referência. Aceitação: um quadro não preto com a
+   saída do próprio título.
+3. **Executar em uma máquina com GPU** para que o D3D12 use hardware e o caminho
+   RSX seja exercitado de verdade.
+4. **Recompilar otimizado** assim que o título avançar, para ver se o `/Od` é
+   ele mesmo a causa da parada.
+5. **Reelevar com os nomes do Ghidra** (1.289 símbolos do motor já extraídos)
+   para que o código gerado fique legível durante a depuração do passo 1.

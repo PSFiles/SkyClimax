@@ -1,16 +1,16 @@
 # Build
 
-Status: **the native build has never been executed on this host.** No C/C++
-compiler, CMake or Ninja is installed. Stages 1–4 are validated; stages 5–7 are
-planned.
+Status: **validated end to end.** `scripts/build.py` compiles 24 PPU translation
+units and 5 SPU units with clang-cl and links `build/SkyClimax.exe` (295.6 MB).
+Stages 1–6 are validated; stage 7 runs but does not reach gameplay.
 
 ## Prerequisites
 
 | Component | Version | Why |
 |---|---|---|
 | Visual Studio Build Tools 2022 | 17.x, "Desktop development with C++" | MSVC provides `cl`; the generated code uses `__declspec(thread)` |
-| CMake | ≥ 3.20 | build generation |
-| Ninja | ≥ 1.11 | fast incremental builds |
+| LLVM / clang-cl | 23.1.5 | the only compiler that accepts the generated header |
+| Ninja | ≥ 1.11 | build generation (ships with Build Tools) |
 | Windows SDK | 10.0.22621 or newer | D3D12 headers |
 | ps3recomp runtime sources | v0.19.0 | `ppu_load_elf`, `ppu_recomp_register`, `ppu_hle_init`, `ppu_run` |
 
@@ -77,24 +77,30 @@ Not required for this title. The runtime already implements all 14 imported
 libraries; `generate_stubs.py` exists for libraries that are missing. Keep it as
 a fallback when a NID turns out to be unimplemented at runtime.
 
-## Stage 6 — configure and build
+## Stage 6 — build
 
 ```bash
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-      -DPS3RECOMP_DIR=/path/to/ps3recomp
-cmake --build build
+python scripts/build.py --jobs 2
 ```
 
-Not executed. Expect two problems first: the runtime sources must be present,
-and 9.57 M lines of generated C++ may need `/bigobj` and further chunking.
+Validated: 24 PPU units + 5 SPU units, 0 errors, `build/SkyClimax.exe` 295.6 MB.
+
+`scripts/build.py` exists because CMake cannot run on this host: its compiler
+probe invokes `reg.exe`, which the sandbox blocks. The script locates MSVC, the
+Windows SDK and clang-cl, emits `build/build.ninja`, and runs Ninja. The PPU
+units are built `/Od` by default because a 600k-line unit at `/O1` needs ~2.5 GB
+and this host has 7.9 GB; pass `--optimize` on a larger machine.
 
 ## Stage 7 — run
 
 ```bash
-./build/skyclimax.exe --log-level info
+./build/SkyClimax.exe work/game/PS3_GAME/USRDIR/EBOOT.elf
 ```
 
-Not executed.
+Validated to the point of presenting frames: the entry OPD is dispatched, D3D12
+initialises (WARP on this host), the window opens, `rom.psarc` is opened and its
+TOC read, and `SetConvertAndFlip` runs four times. The title then blocks in
+`event_queue_receive` and never reaches gameplay.
 
 ## What "done" means per stage
 

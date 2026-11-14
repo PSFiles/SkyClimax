@@ -59,19 +59,56 @@
       "license": "PSF-2.0",
       "verify_cmd": "python -V",
       "verified_output": "Python 3.13.14"
+    },
+    {
+      "name": "vs-build-tools",
+      "version": "17.14.45",
+      "msvc_toolset": "14.44.35207",
+      "windows_sdk": "10.0.26100.0",
+      "source": "manual install: Visual Studio Build Tools 2022, 'Desktop development with C++'",
+      "license": "Microsoft Visual Studio licence",
+      "verify_cmd": "vswhere -latest -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath",
+      "verified_output": "C://Program Files (x86)//Microsoft Visual Studio//2022//BuildTools",
+      "notes": "Provides cl.exe, link.exe, the Windows SDK and Ninja. Requires administrator rights, so it is not automated."
+    },
+    {
+      "name": "llvm-clang-cl",
+      "version": "23.1.5",
+      "source": "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.5/clang+llvm-23.1.5-x86_64-pc-windows-msvc.tar.zst",
+      "size_bytes": 276368249,
+      "license": "Apache-2.0 WITH LLVM-exception",
+      "verify_cmd": ".tools/llvm-23/bin/clang-cl.exe --version",
+      "verified_output": "clang version 23.1.5",
+      "notes": "Required: the generated ppu_recomp.h uses __atomic_* and __builtin_bswap* which cl.exe does not provide. MSVC's headers and link.exe are still used."
     }
   ],
   "python_packages": [
-    { "name": "capstone", "version": "5.0.7", "verify_output": "5.0.7" },
-    { "name": "pyelftools", "version": "0.33", "verify_output": "0.33" },
-    { "name": "pycryptodome", "version": "4.4.0", "verify_output": "4.4.0" },
-    { "name": "lief", "version": "1.0.0", "verify_output": "1.0.0-d05b3499b" }
+    {
+      "name": "capstone",
+      "version": "5.0.7",
+      "verify_output": "5.0.7"
+    },
+    {
+      "name": "pyelftools",
+      "version": "0.33",
+      "verify_output": "0.33"
+    },
+    {
+      "name": "pycryptodome",
+      "version": "4.4.0",
+      "verify_output": "4.4.0"
+    },
+    {
+      "name": "lief",
+      "version": "1.0.0",
+      "verify_output": "1.0.0-d05b3499b"
+    }
   ],
   "not_installed": [
     {
-      "name": "msvc-build-tools",
-      "reason": "No Visual Studio Build Tools on the development host; blocks milestone M4.",
-      "manual_procedure": "Install Visual Studio Build Tools 2022 with the 'Desktop development with C++' workload, then CMake >= 3.20 and Ninja >= 1.11."
+      "name": "cmake",
+      "reason": "CMake's compiler probe invokes reg.exe, which the sandbox blocks; scripts/build.py drives Ninja directly instead.",
+      "manual_procedure": "Install CMake >= 3.20 and use src/port/CMakeLists.txt on a host without the reg.exe restriction."
     }
   ]
 }

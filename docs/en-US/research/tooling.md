@@ -18,6 +18,10 @@ available.
 | pycryptodome | 4.4.0 | PyPI | `Crypto.__version__` | `4.4.0` |
 | LIEF | 1.0.0 | PyPI | `lief.__version__` | `1.0.0-d05b3499b` |
 | ps3recomp | 0.19.0 | provided archive | `VERSION.txt` | `commit ae92407b…`, `win-x64` |
+| VS Build Tools | 17.14.45 (MSVC 14.44.35207) | manual install | `vswhere -latest` | `C://Program Files (x86)\Microsoft Visual Studio\2022\BuildTools` |
+| Windows SDK | 10.0.26100.0 | ships with Build Tools | directory listing | `10.0.26100.0` |
+| LLVM / clang-cl | 23.1.5 | GitHub release `llvmorg-23.1.5` | `clang-cl --version` | `clang version 23.1.5` |
+| Ninja | ships with Build Tools | — | `ninja --version` | used via `scripts/build.py` |
 
 ## Ghidra requires JDK 25, not JDK 21
 
@@ -63,10 +67,22 @@ The tools used by SkyClimax are `pkg_extract.py`, `ppu_loader.py`,
 `ppu_lifter.py`, `ppu_disasm.py`, `generate_stubs.py`, `ghidra_analyze.py` and
 `unfself.py`.
 
-## Windows toolchain gap
+## Why clang-cl and not cl.exe
 
-`cl`, `cmake`, `ninja`, `gcc` and `clang` are all absent from this machine, so
-no native executable can be produced here. The generated C++ is therefore
-verified structurally and by inspection, never by compilation. Installing
-Visual Studio Build Tools is the single prerequisite that unblocks the next
-milestone; see [build](../build/build.md).
+The generated `ppu_recomp.h` uses `__atomic_load_n`, `__atomic_store_n`,
+`__builtin_bswap32/64` and `__builtin_expect` unconditionally. `cl.exe` has no
+equivalent, and the header is machine-generated, so it cannot be patched by
+hand. The toolkit's own CI compile-checks the Windows path with clang-cl, which
+is therefore the supported compiler here. MSVC still supplies the headers,
+libraries and `link.exe`; clang-cl is only the front end.
+
+## Why CMake is not used
+
+CMake's compiler probe invokes `reg.exe` to query the Visual Studio
+installation. That program is blocked by this environment's program blacklist,
+and the block cannot be approved from a command. Rather than route around a
+security control, the build is driven by `scripts/build.py`, which locates the
+toolchain, emits `build/build.ninja` for the 24 translation units and runs
+Ninja. `src/port/CMakeLists.txt` is kept for hosts where CMake is usable.
+
+See [build](../build/build.md) for the procedure.

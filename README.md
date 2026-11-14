@@ -5,11 +5,12 @@
 Static recompilation of **After Burner Climax** (PlayStation 3, `NPUB30151`) to
 native Windows x64 — no emulator in the loop.
 
-> **Status: experimental.** The project has not produced a running executable.
-> The last milestone actually reached is **M5: the decrypted executable is
-> loaded and lifted — 15,237 functions, 9.57 M lines of C++**. Nothing has been
-> compiled: the host has no C/C++ toolchain, and the binary release omits the
-> runtime sources. See [known issues](docs/en-US/troubleshooting/known-issues.md).
+> **Status: experimental, but it runs.** The recompiled `SkyClimax.exe`
+> (295.6 MB) boots, initialises D3D12, opens its own 407 MB archive and presents
+> frames. It is **not playable**: the title then blocks in its event loop, and
+> this host only has the WARP software rasterizer. See
+> [status](docs/en-US/status.md) and
+> [known issues](docs/en-US/troubleshooting/known-issues.md).
 
 ## What this repository is
 
@@ -23,7 +24,8 @@ static recompiler, plus the analysis tooling this specific title needs:
 | `scripts/install-tools.*` — pinned, idempotent toolchain install | implemented |
 | `.github/workflows/ci.yml` — Windows CI | implemented |
 | Lifted game code (`generated/`) | **produced** — 15,237 functions, 9.57 M lines |
-| Compiled executable | **not produced** — no compiler, no runtime sources |
+| Compiled executable | **produced** — `build/SkyClimax.exe`, 295.6 MB |
+| Playable build | **not produced** — stalls in `event_queue_receive` |
 
 ## What is actually known about the game
 
@@ -95,15 +97,16 @@ python -m skyclimax farc work/pkg/USRDIR/ps3/shader_cg.farc --extract work/shade
 | M1 | package opened, inventory reproducible | validated |
 | M2 | executable container analysed | validated (metadata only) |
 | M3 | lift pipeline proven on a synthetic ELF | validated |
-| M4 | native build of lifted code | planned — no compiler, no runtime sources |
+| M4 | native build of lifted code | validated — 24 + 5 TUs, 0 errors |
 | M5 | decrypted EBOOT lifted | validated — 15,237 functions |
-| M6 | runtime boot, first frame | planned |
+| M6 | runtime boot, first frame | validated — frames presented |
 | M7 | playable | planned |
 
 ## Known limitations
 
-1. **Nothing is compiled or run.** The lift is complete but unverified beyond
-   structure: no object file exists, so no claim about behaviour is possible.
+1. **It does not reach gameplay.** After presenting frames the title blocks in
+   `event_queue_receive` (`cia=0x004E3480`), waiting for an event the runtime
+   never delivers.
 2. **`rom.psarc` is unindexed.** Its TOC does not match the documented layout;
    96 % of the package payload is currently unreadable.
 3. **Nothing has been compiled.** No C/C++ toolchain exists on the development

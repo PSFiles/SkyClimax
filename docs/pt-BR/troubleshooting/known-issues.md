@@ -37,7 +37,7 @@ vez de adivinhar.
 
 ## KI-003 — Não há toolchain C/C++ neste hospedeiro
 
-**Severidade:** bloqueante (M4)
+**Severidade:** resolvido
 
 **Observado.**
 
@@ -51,10 +51,14 @@ clang   MISSING
 
 **Causa.** A estação de trabalho não tem o Visual Studio Build Tools instalado.
 
-**Contorno.** Instale o VS Build Tools 2022 com "Desktop development with C++".
-Até lá, o C++ elevado é verificado estruturalmente (não vazio, uma função por
-função do convidado, auxiliares de prólogo/epílogo esperados presentes), mas
-nunca compilado.
+**Correção aplicada.** O Visual Studio Build Tools 2022 (17.14.45, MSVC
+14.44.35207, SDK 10.0.26100.0) foi instalado, e o LLVM 23.1.5 fornece o
+clang-cl, o único compilador que aceita o uso de `__atomic_*` e
+`__builtin_bswap*` no cabeçalho gerado. `scripts/build.py` conduz o clang-cl e o
+Ninja diretamente.
+
+**Verificado.** As 24 unidades de tradução de PPU e as 5 de SPU compilam sem
+erros, e o link produz `build/SkyClimax.exe` (295,6 MB).
 
 ## KI-004 — O Ghidra 12.2 rejeita o JDK 21
 

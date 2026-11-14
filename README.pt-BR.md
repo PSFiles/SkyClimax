@@ -5,11 +5,11 @@
 Recompilação estática de **After Burner Climax** (PlayStation 3, `NPUB30151`)
 para Windows x64 nativo — sem emulador no meio do caminho.
 
-> **Estado: experimental.** O projeto não produziu um executável funcional. O
-> último marco efetivamente alcançado é o **M5: o executável descriptografado
-> está carregado e elevado — 15.237 funções, 9,57 M linhas de C++**. Nada foi
-> compilado: o hospedeiro não tem toolchain C/C++ e a release binária omite as
-> fontes do runtime. Veja
+> **Estado: experimental, mas executa.** O `SkyClimax.exe` recompilado
+> (295,6 MB) inicializa, sobe o D3D12, abre o próprio arquivo de 407 MB e
+> apresenta quadros. **Não é jogável**: o título então bloqueia no laço de
+> eventos, e este hospedeiro só tem o rasterizador por software WARP. Veja
+> [estado](docs/pt-BR/status.md) e
 > [problemas conhecidos](docs/pt-BR/troubleshooting/known-issues.md).
 
 ## O que é este repositório
@@ -25,7 +25,8 @@ análise de que este título específico precisa:
 | `scripts/install-tools.*` — instalação fixada e idempotente da toolchain | implementado |
 | `.github/workflows/ci.yml` — CI no Windows | implementado |
 | Código elevado do jogo (`generated/`) | **produzido** — 15.237 funções, 9,57 M linhas |
-| Executável compilado | **não produzido** — sem compilador e sem fontes do runtime |
+| Executável compilado | **produzido** — `build/SkyClimax.exe`, 295,6 MB |
+| Build jogável | **não produzido** — trava em `event_queue_receive` |
 
 ## O que realmente se sabe sobre o jogo
 
@@ -98,16 +99,16 @@ python -m skyclimax farc work/pkg/USRDIR/ps3/shader_cg.farc --extract work/shade
 | M1 | pacote aberto, inventário reproduzível | validado |
 | M2 | contêiner do executável analisado | validado (apenas metadados) |
 | M3 | pipeline de elevação provado em um ELF sintético | validado |
-| M4 | compilação nativa do código elevado | planejado — sem compilador e sem fontes do runtime |
+| M4 | compilação nativa do código elevado | validado — 24 + 5 UTs, 0 erros |
 | M5 | EBOOT descriptografado elevado | validado — 15.237 funções |
-| M6 | inicialização do runtime, primeiro quadro | planejado |
+| M6 | inicialização do runtime, primeiro quadro | validado — quadros apresentados |
 | M7 | jogável | planejado |
 
 ## Limitações conhecidas
 
-1. **Nada está compilado nem executado.** A elevação está completa, mas
-   verificada apenas estruturalmente: não existe arquivo objeto, então nenhuma
-   afirmação sobre comportamento é possível.
+1. **Não chega à jogabilidade.** Depois de apresentar quadros o título bloqueia
+   em `event_queue_receive` (`cia=0x004E3480`), esperando um evento que o runtime
+   nunca entrega.
 2. **O `rom.psarc` está sem índice.** Sua TOC não corresponde ao layout
    documentado; 96 % da carga do pacote está atualmente ilegível.
 3. **Nada foi compilado.** Não existe toolchain C/C++ no hospedeiro de

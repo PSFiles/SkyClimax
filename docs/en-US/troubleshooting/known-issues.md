@@ -36,7 +36,7 @@ guessing.
 
 ## KI-003 — No C/C++ toolchain on this host
 
-**Severity:** blocking (M4)
+**Severity:** resolved
 
 **Observed.**
 
@@ -50,9 +50,13 @@ clang   MISSING
 
 **Cause.** The workstation has no Visual Studio Build Tools installation.
 
-**Workaround.** Install VS Build Tools 2022 with "Desktop development with C++".
-Until then the lifted C++ is verified structurally (non-empty, one function per
-guest function, expected prologue/epilogue helpers present) but never compiled.
+**Fix applied.** Visual Studio Build Tools 2022 (17.14.45, MSVC 14.44.35207,
+SDK 10.0.26100.0) was installed, and LLVM 23.1.5 provides clang-cl, which is the
+only compiler that accepts the generated header's `__atomic_*` and
+`__builtin_bswap*` usage. `scripts/build.py` drives clang-cl and Ninja directly.
+
+**Verified.** All 24 PPU translation units and 5 SPU units compile with zero
+errors, and the link produces `build/SkyClimax.exe` (295.6 MB).
 
 ## KI-004 — Ghidra 12.2 rejects JDK 21
 
