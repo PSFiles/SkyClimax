@@ -43,7 +43,7 @@ O REA é distribuído como o pacote npm `rea-agents`. A versão 6.9.0 declara:
 
 O Node.js empacotado com a estação de trabalho é 22.22.2, que **não** satisfaz
 essa faixa; por isso o Node 24.22.3 é instalado dentro de `.tools/` e
-prepended ao `PATH` apenas para o REA. Veja
+adicionado ao início do `PATH` apenas para o REA. Veja
 [problemas conhecidos](../troubleshooting/known-issues.md) para o estado da
 instalação nesta sessão.
 
