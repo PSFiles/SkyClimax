@@ -1,0 +1,77 @@
+{
+  "_comment": "Pinned toolchain. Every entry was installed from the official source named here and verified by the command in verify_cmd. See scripts/versions.env for the installer.",
+  "tools": [
+    {
+      "name": "ghidra",
+      "version": "12.2",
+      "build": "20261016",
+      "source": "https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.2_build/ghidra_12.2_PUBLIC_20261016.zip",
+      "sha256": "2c2cd776db3c1f6a097ba418922378ac3649cadd5e844a6f5f088ae628a7be67",
+      "size_bytes": 569712708,
+      "license": "Apache-2.0",
+      "verify_cmd": "support/analyzeHeadless",
+      "verified_output": "Headless Analyzer Usage: analyzeHeadless",
+      "notes": "Requires JDK 25 (application.java.min=25). Ghidra is bring-your-own for REA."
+    },
+    {
+      "name": "temurin-jdk",
+      "version": "25.0.5+8",
+      "source": "https://api.adoptium.net/v3/binary/latest/25/ga/windows/x64/jdk/hotspot/normal/eclipse",
+      "sha256": "636bdc13dc649ddc7d5921c5c7d23cca6e44fd19d662b45cc9c02135a6c96c42",
+      "size_bytes": 141285173,
+      "license": "GPL-2.0 WITH Classpath-exception-2.0",
+      "verify_cmd": "bin/java -version",
+      "verified_output": "openjdk version \"25.0.5\" 2026-10-20 LTS"
+    },
+    {
+      "name": "node",
+      "version": "24.22.3",
+      "source": "https://nodejs.org/dist/v24.22.3/node-v24.22.3-win-x64.zip",
+      "sha256": "e612af99f626ab415ea225af6bce5c971feb448cb5cae250bb1c3fa50c5f7d9f",
+      "license": "MIT",
+      "verify_cmd": "node --version",
+      "verified_output": "v24.22.3",
+      "notes": "The workstation-bundled Node 22.22.2 does not satisfy rea-agents engines."
+    },
+    {
+      "name": "rea-agents",
+      "version": "6.9.0",
+      "source": "npm:rea-agents@6.9.0",
+      "license": "see package THIRD_PARTY_NOTICES.md",
+      "verify_cmd": "node .tools/rea/node_modules/rea-agents/scripts/rea.mjs --version",
+      "verified_output": "6.9.0",
+      "notes": "npm does not create a .bin shim when --prefix is used without package.json."
+    },
+    {
+      "name": "ps3recomp",
+      "version": "0.19.0",
+      "commit": "ae92407bb1d899e3d32143e360fe6e6d4d8fa1b5",
+      "source": "local archive ps3recomp-v0.19.0-win-x64.zip",
+      "license": "see .vendor/ps3recomp-v0.19.0-win-x64/LICENSE",
+      "verify_cmd": "cat .vendor/ps3recomp-v0.19.0-win-x64/VERSION.txt",
+      "verified_output": "ps3recomp v0.19.0",
+      "notes": "Binary release; not vendored into git."
+    },
+    {
+      "name": "python",
+      "version": "3.13.14",
+      "source": "system interpreter",
+      "license": "PSF-2.0",
+      "verify_cmd": "python -V",
+      "verified_output": "Python 3.13.14"
+    }
+  ],
+  "python_packages": [
+    { "name": "capstone", "version": "5.0.7", "verify_output": "5.0.7" },
+    { "name": "pyelftools", "version": "0.33", "verify_output": "0.33" },
+    { "name": "pycryptodome", "version": "4.4.0", "verify_output": "4.4.0" },
+    { "name": "lief", "version": "1.0.0", "verify_output": "1.0.0-d05b3499b" }
+  ],
+  "not_installed": [
+    {
+      "name": "msvc-build-tools",
+      "reason": "No Visual Studio Build Tools on the development host; blocks milestone M4.",
+      "manual_procedure": "Install Visual Studio Build Tools 2022 with the 'Desktop development with C++' workload, then CMake >= 3.20 and Ninja >= 1.11."
+    }
+  ]
+}
