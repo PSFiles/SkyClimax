@@ -44,3 +44,6 @@ desktop.ini
 
 # --- third-party binary release (fetched by scripts/install-tools.ps1) ----
 ps3recomp-*.zip
+
+# --- local assistant workspace data (not project source) -----------------
+/.workbuddy-ai/
