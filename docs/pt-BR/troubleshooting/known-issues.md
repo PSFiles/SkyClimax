@@ -188,12 +188,30 @@ foi recompilado do código-fonte e o título se comportou de forma idêntica: 61
 chamadas a `event_queue_receive` em 100 s, ainda travado. O patch foi revertido e
 o script mantido apenas como registro do experimento.
 
-**O que isso descarta.** O handler de fila não é o que acorda essa espera. A
-espera retorna rápido em vez de aguardar o tempo nominal (612 chamadas em 100 s
-não podem ser 9 s cada), então o recebimento provavelmente falha de imediato e o
-título está repetindo a tentativa, o que aponta para a própria fila ou para o
-produtor que deveria empurrar algo nela — não para o callback do GCM.
+**Medido com os diagnósticos do próprio runtime** (sem patch):
 
-**Próxima sondagem.** Registrar o valor de retorno de `sys_event_queue_receive`
-para `q=1` e registrar cada `sys_event_queue_push` com o id da fila de destino,
-para identificar pelo nome o produtor que nunca executa.
+```bash
+EVT_PUSHLOG=1 PS3_EVQSTAT=100 ./build/SkyClimax.exe .../EBOOT.elf
+```
+
+- `EVT_PUSHLOG=1` conta pushes para a fila 1: **0 em 60 s**.
+- `PS3_WAITBT=1` despeja a pilha do convidado na espera: `tid=3 q=1`, `r3=1`,
+  `r5=0x00895440` (9.000.000 µs), `lr=0x002C698C`, `r28=r29=r31=0x016EA508`.
+- O build com patch foi testado de novo com `EVT_PUSHLOG=1`: **continua 0
+  pushes**, então o handler de fila definitivamente não é o produtor.
+
+**Conclusão, nos termos do próprio runtime.** O comentário dele sobre
+`PS3_EVQSTAT` diz que pendente > 0 significa que o receptor não acorda (bug do
+runtime) e pendente == 0 significa que nada produziu o evento. A contagem é zero,
+então **nada nunca o produz**. O receptor não falha em acordar; ele espera por um
+produtor que nunca executa.
+
+**Qual é provavelmente o produtor.** Vinte e uma threads são criadas na mesma
+janela, todas do middleware CRI: `CriThread` (várias), `CriSr_ProcessServer`,
+operárias `CriThread`. A chave da fila `0x8000CAFE02460300` é o magic próprio da
+CRI, então o produtor é um par servidor/cliente da CRI, não o callback do GCM nem
+o cellAudio (que registrou chave `0x0`, correspondendo às filas 2 e 3, não à 1).
+
+**Próxima sondagem.** Despejar as pilhas das threads CRI com `WAITBT_EVERY` e ver
+em que elas estão bloqueadas; se estiverem esperando uma primitiva da CRI que o
+runtime não implementa, essa primitiva é a peça de HLE que falta.

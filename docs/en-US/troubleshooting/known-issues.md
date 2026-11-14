@@ -180,12 +180,29 @@ source, and the title behaved identically: 612 `event_queue_receive` calls in
 100 s, still stalled. The patch has been reverted and the script kept only as a
 record of the experiment.
 
-**What this rules out.** The queue handler is not what wakes that wait. The wait
-returns quickly rather than after its nominal timeout (612 calls in 100 s cannot
-be 9 s each), so the receive is most likely failing immediately and the title is
-retrying, which points at the queue itself or at the producer that should push to
-it — not at the GCM callback.
+**Measured with the runtime's own diagnostics** (no patch needed):
 
-**Next probe.** Log the return value of `sys_event_queue_receive` for `q=1`, and
-log every `sys_event_queue_push` with its target queue id, so the producer that
-never runs can be identified by name rather than guessed.
+```bash
+EVT_PUSHLOG=1 PS3_EVQSTAT=100 ./build/SkyClimax.exe .../EBOOT.elf
+```
+
+- `EVT_PUSHLOG=1` counts pushes to queue 1: **0 in 60 s**.
+- `PS3_WAITBT=1` dumps the guest stack at the wait: `tid=3 q=1`, `r3=1`,
+  `r5=0x00895440` (9,000,000 µs), `lr=0x002C698C`, `r28=r29=r31=0x016EA508`.
+- The patched build was re-tested with `EVT_PUSHLOG=1`: **still 0 pushes**, so
+  the queue handler is definitively not the producer.
+
+**Conclusion, in the runtime's own terms.** Its comment on `PS3_EVQSTAT` says
+pending > 0 means the receiver is not waking (runtime bug) and pending == 0 means
+nothing produced the event. The count is zero, so **nothing ever produces it**.
+The receiver is not failing to wake; it is waiting for a producer that never runs.
+
+**What the producer probably is.** Twenty-one threads are created during the same
+window, all CRI middleware: `CriThread` (×several), `CriSr_ProcessServer`,
+`CriThread` workers. The queue key `0x8000CAFE02460300` is CRI's own magic, so the
+producer is a CRI server/client pair, not the GCM callback and not cellAudio
+(which registered key `0x0`, matching queues 2 and 3, not queue 1).
+
+**Next probe.** Dump the CRI threads' stacks with `WAITBT_EVERY` and see what they
+are blocked on; if they are waiting on a CRI primitive the runtime does not
+implement, that primitive is the missing HLE piece.
